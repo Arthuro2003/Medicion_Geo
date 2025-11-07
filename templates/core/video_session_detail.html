@@ -1,0 +1,363 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% load measurement_extras %}
+{% load static %}
+
+{% block title %}Detalles de Sesión - {{ video_session.name }}{% endblock %}
+
+{% block extra_css %}
+  <style>
+      /* ### INICIO: CÓDIGO CSS AÑADIDO ### */
+      .object-id-badge {
+          position: absolute;
+          bottom: 0.5rem; /* 8px desde abajo */
+          right: 0.75rem; /* 12px desde la derecha */
+          font-size: 0.8em;
+          font-weight: bold;
+          color: #fff;
+          background-color: rgba(0, 0, 0, 0.5); /* Fondo semitransparente */
+          padding: 3px 8px;
+          border-radius: 5px;
+          line-height: 1;
+      }
+      .session-header {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border-radius: 8px;
+          padding: 2rem;
+          margin-bottom: 2rem;
+      }
+
+      .measurement-card {
+          border-left: 4px solid #007bff;
+          transition: transform 0.2s;
+      }
+
+      .measurement-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .stat-card {
+          background: #1A1A2E; /* dark background instead of white */
+          border-radius: 8px;
+          padding: 1.5rem;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          text-align: center;
+      }
+
+      .stat-icon {
+          font-size: 2rem;
+          margin-bottom: 1rem;
+      }
+
+      .export-buttons {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+      }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="container-fluid">
+    <!-- Session Header -->
+    <div class="session-header">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h1 class="h3 mb-2">{{ video_session.name }}</h1>
+          <p class="mb-1">
+            <i class="fas fa-camera me-2"></i>Cámara {{ video_session.camera_index }}
+          </p>
+          <p class="mb-0">
+            <i class="fas fa-clock me-2"></i>
+            {{ video_session.started_at|date:"d/m/Y H:i" }} -
+            {% if video_session.ended_at %}
+              {{ video_session.ended_at|date:"d/m/Y H:i" }}
+            {% else %}
+              En curso
+            {% endif %}
+          </p>
+        </div>
+        <div class="col-md-4 text-md-end">
+          <div class="d-flex flex-column gap-2">
+            <a href="{% url 'core:video_dashboard' project.pk %}" class="btn btn-light">
+              <i class="fas fa-arrow-left"></i> Volver al Dashboard
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Statistics Row -->
+    <div class="row mb-4">
+      <div class="col-md-3 mb-3">
+        <div class="stat-card">
+          <div class="stat-icon text-primary">
+            <i class="fas fa-ruler"></i>
+          </div>
+          <h4 class="mb-1">{{ measurements.count }}</h4>
+          <p class="text-muted mb-0">Mediciones</p>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="stat-card">
+          <div class="stat-icon text-success">
+            <i class="fas fa-clock"></i>
+          </div>
+          <h4 class="mb-1">
+            {% if video_session.duration %}
+              {{ video_session.duration|timedelta_seconds|human_seconds }}
+            {% else %}
+              -
+            {% endif %}
+          </h4>
+          <p class="text-muted mb-0">Duración</p>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="stat-card">
+          <div class="stat-icon text-info">
+            <i class="fas fa-compass"></i>
+          </div>
+          <h4 class="mb-1">
+            {% if video_session.is_calibrated %}
+              <i class="fas fa-check text-success"></i>
+            {% else %}
+              <i class="fas fa-times text-danger"></i>
+            {% endif %}
+          </h4>
+          <p class="text-muted mb-0">Calibrada</p>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="stat-card">
+          <div class="stat-icon text-warning">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <h4 class="mb-1">
+            {% if measurements.count > 0 %}
+              {{ measurements.count|floatformat:1 }}
+            {% else %}
+              0
+            {% endif %}
+          </h4>
+          <p class="text-muted mb-0">Promedio/min</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <!-- Session Details -->
+      <div class="col-lg-4 mb-4">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="fas fa-info-circle me-2"></i>Detalles de la Sesión
+            </h5>
+          </div>
+          <div class="card-body">
+            <table class="table table-sm">
+              <tr>
+                <td><strong>Nombre:</strong></td>
+                <td>{{ video_session.name }}</td>
+              </tr>
+              <tr>
+                <td><strong>Iniciada:</strong></td>
+                <td>{{ video_session.started_at|date:"d/m/Y H:i:s" }}</td>
+              </tr>
+              {% if video_session.ended_at %}
+                <tr>
+                  <td><strong>Terminada:</strong></td>
+                  <td>{{ video_session.ended_at|date:"d/m/Y H:i:s" }}</td>
+                </tr>
+                <tr>
+                  <td><strong>Duración:</strong></td>
+                  <td>
+                    {% if video_session.duration %}
+                      {{ video_session.duration|timedelta_seconds|human_seconds }}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endif %}
+              <tr>
+                <td><strong>Estado:</strong></td>
+                <td>
+                  {% if video_session.is_active %}
+                    <span class="badge bg-success">Activa</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Terminada</span>
+                  {% endif %}
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Calibración:</strong></td>
+                <td>
+                  {% if video_session.is_calibrated %}
+                    <span class="badge bg-success">
+                    <i class="fas fa-check"></i> Calibrada
+                  </span>
+                  {% else %}
+                    <span class="badge bg-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Sin Calibrar
+                  </span>
+                  {% endif %}
+                </td>
+              </tr>
+            </table>
+
+            {% if video_session.is_calibrated and video_session.calibration_data %}
+              <div class="mt-3">
+                <h6>Datos de Calibración:</h6>
+                <small class="text-muted">
+                  <strong>Unidad:</strong> {{ video_session.calibration_data.unit }}<br>
+                  <strong>Píxeles por
+                    unidad:</strong> {{ video_session.calibration_data.pixels_per_unit|floatformat:2 }}
+                </small>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card mt-3">
+          <div class="card-header">
+            <h6 class="mb-0">
+              <i class="fas fa-bolt me-2"></i>Acciones Rápidas
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="d-grid gap-2">
+              {% if video_session.is_active %}
+                <a href="{% url 'core:video_stream' project.pk video_session.pk %}" class="btn btn-primary">
+                  <i class="fas fa-play"></i> Continuar Sesión
+                </a>
+                <a href="{% url 'core:stop_video_session' project.pk video_session.pk %}"
+                   class="btn btn-outline-danger">
+                  <i class="fas fa-stop"></i> Terminar Sesión
+                </a>
+              {% else %}
+                <a href="{% url 'core:video_dashboard' project.pk %}" class="btn btn-outline-primary">
+                  <i class="fas fa-video"></i> Nueva Sesión
+                </a>
+              {% endif %}
+
+              {% if video_session.snapshot %}
+                <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#snapshotModal">
+                  <i class="fas fa-camera-retro"></i> Mostrar Captura de Sesión
+                </button>
+              {% endif %}
+
+              <a href="{% url 'core:video_measurements_export' project.pk video_session.pk %}?format=json"
+                 class="btn btn-outline-success">
+                <i class="fas fa-download"></i> Exportar Datos
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Measurements List -->
+      <div class="col-lg-8">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+              <i class="fas fa-ruler me-2"></i>Mediciones ({{ measurements.count }})
+            </h5>
+          </div>
+          <div class="card-body">
+            {% if measurements %}
+              <div class="row">
+                {% for measurement in measurements %}
+                  <div class="col-md-6 mb-3">
+                    <div class="measurement-card card">
+                      <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                          <h6 class="card-title mb-0">{{ measurement.name }}</h6>
+                          <small class="text-muted">
+                            {{ measurement.created_at|date:"H:i:s" }}
+                          </small>
+                        </div>
+                        <div class="mb-2">
+                          {% if measurement.shape_type and "triang" in measurement.shape_type|lower %}
+                            <strong>Lado A:</strong> {{ measurement.side_a|default:"-"|two_decimals }} cm<br>
+                            <strong>Lado B:</strong> {{ measurement.side_b|default:"-"|two_decimals }} cm<br>
+                            <strong>Lado C:</strong> {{ measurement.side_c|default:"-"|two_decimals }} cm<br>
+                            <strong>Área aproximada:</strong> {{ measurement.area|default:"-"|two_decimals }} cm²<br>
+                            <strong>Perímetro:</strong> {{ measurement.perimeter|default:"-"|two_decimals }} cm
+                          {% elif measurement.shape_type and "rect" in measurement.shape_type|lower %}
+                            <strong>Ancho:</strong> {{ measurement.width|default:"-"|two_decimals }} cm<br>
+                            <strong>Alto:</strong> {{ measurement.height|default:"-"|two_decimals }} cm<br>
+                            <strong>Área aproximada:</strong> {{ measurement.area|default:"-"|two_decimals }} cm²<br>
+                            <strong>Perímetro:</strong> {{ measurement.perimeter|default:"-"|two_decimals }} cm
+                          {% elif measurement.shape_type and "cuadr" in measurement.shape_type|lower %}
+                            <strong>Ancho:</strong> {{ measurement.width|default:"-"|two_decimals }} cm<br>
+                            <strong>Alto:</strong> {{ measurement.height|default:"-"|two_decimals }} cm<br>
+                            <strong>Área aproximada:</strong> {{ measurement.area|default:"-"|two_decimals }} cm²<br>
+                            <strong>Perímetro:</strong> {{ measurement.perimeter|default:"-"|two_decimals }} cm
+                          {% elif measurement.shape_type and "cir" in measurement.shape_type|lower %}
+                            <strong>Radio:</strong> {{ measurement.radius|default:"-"|two_decimals }} cm<br>
+                            <strong>Diámetro:</strong> {{ measurement.diameter|default:"-"|two_decimals }} cm<br>
+                            <strong>Área:</strong> {{ measurement.area|default:"-"|two_decimals }} cm²<br>
+                            <strong>Perímetro:</strong> {{ measurement.perimeter|default:"-"|two_decimals }} cm
+                          {% else %}
+                            <strong>Ancho:</strong> {{ measurement.width|default:"-"|two_decimals }} cm<br>
+                            <strong>Alto:</strong> {{ measurement.height|default:"-"|two_decimals }} cm<br>
+                            <strong>Área aproximada:</strong> {{ measurement.area|default:"-"|two_decimals }} cm²<br>
+                            <strong>Perímetro:</strong> {{ measurement.perimeter|default:"-"|two_decimals }} cm
+                          {% endif %}
+                        </div>
+                      {% if measurement.object_id %}
+                          <span class="object-id-badge">Obj: {{ measurement.object_id }}</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="text-center py-4">
+                <i class="fas fa-ruler fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No hay mediciones</h5>
+                <p class="text-muted">Esta sesión no tiene mediciones guardadas.</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if video_session.snapshot %}
+    <div class="modal fade" id="snapshotModal" tabindex="-1" aria-labelledby="snapshotModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="snapshotModalLabel"><i class="fas fa-camera"></i> Captura de la
+              Sesión: {{ video_session.name }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center p-2">
+            <img src="{{ video_session.snapshot.url }}" alt="Captura de la sesión de video" class="img-fluid rounded">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    {% if video_session.is_active %}
+      setInterval(function () {
+        location.reload();
+      }, 30000);
+    {% endif %}
+  </script>
+{% endblock %}

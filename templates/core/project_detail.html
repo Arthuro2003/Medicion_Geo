@@ -1,0 +1,623 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ project.name }} - Medición Geométrica{% endblock %}
+
+{% block page_title %}{{ project.name }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'core:project_list' %}">Proyectos</a></li>
+        <li class="breadcrumb-item active">{{ project.name }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#uploadModal">
+        <i class="bi bi-upload me-1"></i>Subir Imagen
+    </button>
+    <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#bulkUploadModal">
+        <i class="bi bi-images me-1"></i>Subida Múltiple
+    </button>
+    <a href="{% url 'core:video_dashboard' project.pk %}" class="btn btn-warning">
+        <i class="fas fa-video me-1"></i>Video en Tiempo Real
+    </a>
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="bi bi-gear me-1"></i>Acciones
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{% url 'core:project_edit' project.pk %}">
+                <i class="bi bi-pencil me-2"></i>Editar Proyecto
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#reportModal">
+                <i class="bi bi-file-earmark-pdf me-2"></i>Generar Reporte
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="{% url 'core:project_delete' project.pk %}">
+                <i class="bi bi-trash me-2"></i>Eliminar Proyecto
+            </a></li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Project Summary -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h5 class="card-title">{{ project.name }}</h5>
+                        <p class="card-text text-muted">
+                            {{ project.description|default:"Sin descripción disponible" }}
+                        </p>
+                        <div class="row text-center">
+                            <div class="col-md-3 col-6 mb-2">
+                                <div class="p-2">
+                                    <i class="bi bi-images text-primary mb-1" style="font-size: 1.5rem;"></i>
+                                    <div class="fw-bold">{{ project_summary.total_images }}</div>
+                                    <small class="text-muted">Imágenes</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6 mb-2">
+                                <div class="p-2">
+                                    <i class="bi bi-rulers text-success mb-1" style="font-size: 1.5rem;"></i>
+                                    <div class="fw-bold">{{ project_summary.total_measurements }}</div>
+                                    <small class="text-muted">Mediciones</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6 mb-2">
+                                <div class="p-2">
+                                    <i class="bi bi-check-circle text-info mb-1" style="font-size: 1.5rem;"></i>
+                                    <div class="fw-bold">{{ project_summary.calibrated_images }}/{{ project_summary.total_images }}</div>
+                                    <small class="text-muted">Calibradas</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6 mb-2">
+                                <div class="p-2">
+                                    <i class="bi bi-calendar3 text-warning mb-1" style="font-size: 1.5rem;"></i>
+                                    <div class="fw-bold">{{ project.created_at|date:"d/m" }}</div>
+                                    <small class="text-muted">Creado</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 rounded" style="background: #0F0F23; border:1px solid rgba(102,126,234,0.12);">
+                            <h6 class="mb-2 text-white">
+                                <i class="bi bi-info-circle me-2 text-white"></i>Información del Proyecto
+                            </h6>
+                            <table class="table table-sm table-dark mb-0" style="background: transparent; border-collapse: separate;">
+                                <tbody>
+                                <tr>
+                                    <td class="text-muted" style="width:45%; background:#1A1A2E">Creado por:</td>
+                                    <td class="text-white">{{ project.created_by.get_full_name|default:project.created_by.username }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted" style="width:45%; background:#1A1A2E">Fecha:</td>
+                                    <td class="text-white">{{ project.created_at|date:"d/m/Y H:i" }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted" style="width:45%; background:#1A1A2E">Actualizado:</td>
+                                    <td class="text-white">{{ project.updated_at|date:"d/m/Y H:i" }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted" style="width:45%; background:#1A1A2E">Unidades reales:</td>
+                                    <td>
+                                        {% for unit in project_summary.units_used %}
+                                        <span class="badge bg-secondary me-1"> {{ unit }} </span>
+                                        {% empty %}
+                                        <span class="text-muted">px</span>
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter and Search -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body py-3">
+                <form method="get" class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label">Buscar imágenes</label>
+                        <input type="text" class="form-control" name="search"
+                               value="{{ filter_form.search.value|default:'' }}"
+                               placeholder="Buscar por nombre...">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Calibración</label>
+                        <select class="form-control" name="calibrated">
+                            <option value="">Todas</option>
+                            <option value="yes" {% if filter_form.calibrated.value == 'yes' %}selected{% endif %}>Solo calibradas</option>
+                            <option value="no" {% if filter_form.calibrated.value == 'no' %}selected{% endif %}>Sin calibrar</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Mediciones</label>
+                        <select class="form-control" name="has_measurements">
+                            <option value="">Todas</option>
+                            <option value="yes" {% if filter_form.has_measurements.value == 'yes' %}selected{% endif %}>Con mediciones</option>
+                            <option value="no" {% if filter_form.has_measurements.value == 'no' %}selected{% endif %}>Sin mediciones</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-funnel me-1"></i>Filtrar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Images Grid -->
+{% if images %}
+<div class="row">
+    {% for image in images %}
+    <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12 mb-4">
+        <div class="card h-100">
+            <div class="position-relative">
+                <img src="{{ image.image.url }}" class="card-img-top image-thumbnail"
+                     alt="{{ image.name }}" style="height: 200px; object-fit: cover;">
+
+                <!-- Status badges -->
+                <div class="position-absolute top-0 start-0 m-2">
+                    {% if image.is_calibrated %}
+                    <span class="badge bg-success">
+                        <i class="bi bi-check-circle me-1"></i>Calibrada
+                    </span>
+                    {% else %}
+                    <span class="badge bg-warning">
+                        <i class="bi bi-exclamation-circle me-1"></i>Sin calibrar
+                    </span>
+                    {% endif %}
+                </div>
+
+                <!-- Measurements count -->
+                <div class="position-absolute top-0 end-0 m-2">
+                    {% if image.measurements.count > 0 %}
+                    <span class="badge bg-info">
+                        {{ image.measurements.count }} <i class="bi bi-rulers"></i>
+                    </span>
+                    {% endif %}
+                    {% if image.shapes.count > 0 %}
+                    <span class="badge bg-secondary ms-1">
+                        {{ image.shapes.count }} <i class="bi bi-shapes"></i>
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card-body">
+                <h6 class="card-title">{{ image.name|truncatechars:25 }}</h6>
+                <p class="card-text">
+                    <small class="text-muted">
+                        <i class="bi bi-aspect-ratio me-1"></i>
+                        {{ image.width }} × {{ image.height }} px
+                    </small>
+                </p>
+
+                <!-- Quick stats -->
+                <div class="row text-center mb-3">
+                    <div class="col-4">
+                        <small class="text-muted d-block">Medidas</small>
+                        <span class="fw-bold text-success">{{ image.measurements.count }}</span>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-muted d-block">Formas</small>
+                        <span class="fw-bold text-info">{{ image.shapes.count }}</span>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-muted d-block">Unidad</small>
+                        {% if user_preferences %}
+                            {% if image.is_calibrated %}
+                                <span class="fw-bold">{{ user_preferences.default_unit }}</span>
+                            {% else %}
+                                <span class="fw-bold">px</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="fw-bold">{{ image.calibration_unit }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <a href="{% url 'core:image_detail' image.pk %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-eye me-1"></i>Analizar
+                    </a>
+                </div>
+            </div>
+
+            <div class="card-footer text-muted">
+                <small>
+                    <i class="bi bi-calendar3 me-1"></i>
+                    {{ image.uploaded_at|date:"d/m/Y H:i" }}
+                </small>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<nav aria-label="Navegación de imágenes" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.calibrated %}&calibrated={{ request.GET.calibrated }}{% endif %}{% if request.GET.has_measurements %}&has_measurements={{ request.GET.has_measurements }}{% endif %}">
+                <i class="bi bi-chevron-left"></i> Anterior
+            </a>
+        </li>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+        <li class="page-item active">
+            <span class="page-link">{{ num }}</span>
+        </li>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.calibrated %}&calibrated={{ request.GET.calibrated }}{% endif %}{% if request.GET.has_measurements %}&has_measurements={{ request.GET.has_measurements }}{% endif %}">{{ num }}</a>
+        </li>
+        {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.calibrated %}&calibrated={{ request.GET.calibrated }}{% endif %}{% if request.GET.has_measurements %}&has_measurements={{ request.GET.has_measurements }}{% endif %}">
+                Siguiente <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<!-- Empty state -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-images text-muted mb-3" style="font-size: 4rem;"></i>
+                <h3 class="text-muted">No hay imágenes en este proyecto</h3>
+                <p class="text-muted mb-4">Comience subiendo su primera imagen para realizar mediciones geométricas.</p>
+                <button class="btn btn-primary btn-lg me-2" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                    <i class="bi bi-upload me-2"></i>Subir Primera Imagen
+                </button>
+                <button class="btn btn-outline-secondary btn-lg" data-bs-toggle="modal" data-bs-target="#bulkUploadModal">
+                    <i class="bi bi-images me-2"></i>Subida Múltiple
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-upload me-2"></i>Subir Nueva Imagen
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" enctype="multipart/form-data" action="{% url 'core:upload_image' project.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre descriptivo</label>
+                        <input type="text" class="form-control" name="name" required
+                               placeholder="Ej: Plano arquitectónico - Planta baja">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Seleccionar imagen</label>
+                        <input type="file" class="form-control" name="image" accept="image/*"
+                               required onchange="validateImageFile(this)">
+                        <div class="form-text">Formatos soportados: JPEG, JPG, PNG, BMP, TIFF (máx. 10MB)</div>
+                    </div>
+                    <div class="alert_modal alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Consejos para mejores resultados:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Use imágenes con buena iluminación y contraste</li>
+                            <li>Incluya objetos de referencia con dimensiones conocidas</li>
+                            <li>Evite imágenes borrosas o con distorsión</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-upload me-1"></i>Subir Imagen
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Upload Modal -->
+<div class="modal fade" id="bulkUploadModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-images me-2"></i>Subida Múltiple de Imágenes
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" enctype="multipart/form-data" action="{% url 'core:bulk_upload_images' project.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Prefijo para nombres (opcional)</label>
+                        <input type="text" class="form-control" name="name_prefix"
+                               placeholder="Ej: Edificio_A_ (se agregará al nombre de cada archivo)">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Seleccionar múltiples imágenes</label>
+                        <input type="file" class="form-control" name="images" accept="image/*"
+                               multiple required onchange="validateMultipleImages(this)">
+                        <div class="form-text">
+                            Mantenga presionado Ctrl (Windows) o Cmd (Mac) para seleccionar múltiples archivos
+                        </div>
+                    </div>
+                    <div id="selectedFiles" class="mt-3" style="display: none;">
+                        <h6>Archivos seleccionados:</h6>
+                        <div id="filesList" class="list-group"></div>
+                    </div>
+                    <div class="alert_modal alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Nota:</strong> La subida múltiple puede tardar varios minutos dependiendo del tamaño y cantidad de imágenes.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success" id="bulkUploadBtn">
+                        <i class="bi bi-upload me-1"></i>Subir Imágenes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Report Generation Modal -->
+<div class="modal fade" id="reportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-earmark-pdf me-2"></i>Generar Reporte
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'core:generate_report' project.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <label class="form-label">Formato del reporte</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="format" value="pdf" id="formatPdf" checked>
+                            <label class="form-check-label" for="formatPdf">
+                                <i class="bi bi-file-earmark-pdf me-2 text-danger"></i>
+                                <strong>PDF Completo</strong> - Reporte visual con imágenes y gráficos
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="format" value="excel" id="formatExcel">
+                            <label class="form-check-label" for="formatExcel">
+                                <i class="bi bi-file-earmark-excel me-2 text-success"></i>
+                                <strong>Archivo Excel</strong> - Datos estructurados para análisis
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="format" value="json" id="formatJson">
+                            <label class="form-check-label" for="formatJson">
+                                <i class="bi bi-file-earmark-code me-2 text-info"></i>
+                                <strong>Datos JSON</strong> - Para integración con otras aplicaciones
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Contenido a incluir</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="include_images" id="includeImages" checked>
+                            <label class="form-check-label" for="includeImages">
+                                Incluir imágenes en el reporte
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="include_measurements" id="includeMeasurements" checked>
+                            <label class="form-check-label" for="includeMeasurements">
+                                Incluir mediciones detalladas
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="include_shapes" id="includeShapes" checked>
+                            <label class="form-check-label" for="includeShapes">
+                                Incluir formas geométricas
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-download me-1"></i>Generar y Descargar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Image Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewTitle">Vista Previa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="previewImage" src="" alt="Vista previa" style="max-width: 100%; height: auto;">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<script>
+// Image preview functionality
+function previewImage(imageUrl, imageName) {
+    document.getElementById('previewImage').src = imageUrl;
+    document.getElementById('previewTitle').textContent = `Vista Previa: ${imageName}`;
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+}
+
+// Quick calibration
+function quickCalibrate(imageId) {
+    window.location.href = `/images/${imageId}/`;
+}
+
+// Download image data
+function downloadImageData(imageId) {
+    window.open(`/api/images/${imageId}/data/?format=json`, '_blank');
+}
+
+// Validate single image file
+function validateImageFile(input) {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/bmp', 'image/tiff'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+
+        if (!allowedTypes.includes(file.type)) {
+            alert('Formato de archivo no soportado. Use JPEG, JPG, PNG, BMP o TIFF.');
+            input.value = '';
+            return false;
+        }
+
+        if (file.size > maxSize) {
+            alert('El archivo es demasiado grande. Máximo 10MB.');
+            input.value = '';
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Validate multiple image files
+function validateMultipleImages(input) {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/bmp', 'image/tiff'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxFiles = 20; // Maximum files per upload
+
+    if (input.files) {
+        if (input.files.length > maxFiles) {
+            alert(`Máximo ${maxFiles} archivos por subida.`);
+            input.value = '';
+            return false;
+        }
+
+        let totalSize = 0;
+        const filesList = document.getElementById('filesList');
+        filesList.innerHTML = '';
+
+        for (let i = 0; i < input.files.length; i++) {
+            const file = input.files[i];
+            totalSize += file.size;
+
+            if (!allowedTypes.includes(file.type)) {
+                alert(`Formato no soportado: ${file.name}`);
+                input.value = '';
+                return false;
+            }
+
+            if (file.size > maxSize) {
+                alert(`Archivo muy grande: ${file.name} (máx. 10MB)`);
+                input.value = '';
+                return false;
+            }
+
+            // Add to files list
+            const fileItem = document.createElement('div');
+            fileItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+            fileItem.innerHTML = `
+                <div>
+                    <i class="bi bi-file-image me-2"></i>
+                    ${file.name}
+                </div>
+                <span class="badge bg-secondary">${(file.size / 1024 / 1024).toFixed(2)} MB</span>
+            `;
+            filesList.appendChild(fileItem);
+        }
+
+        document.getElementById('selectedFiles').style.display = 'block';
+
+        // Show total size warning if needed
+        if (totalSize > 50 * 1024 * 1024) { // 50MB total
+            const warningItem = document.createElement('div');
+            warningItem.className = 'alert alert-warning mt-2';
+            warningItem.innerHTML = `
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Tamaño total: ${(totalSize / 1024 / 1024).toFixed(2)} MB.
+                La subida puede tardar varios minutos.
+            `;
+            document.getElementById('selectedFiles').appendChild(warningItem);
+        }
+    }
+
+    return true;
+}
+
+// Show loading when submitting bulk upload
+document.getElementById('bulkUploadBtn').addEventListener('click', function() {
+    const fileInput = document.querySelector('input[name="images"]');
+    if (fileInput.files.length > 0) {
+        showLoading();
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Subiendo...';
+    }
+});
+
+// Auto-refresh progress for bulk uploads (if implementing progress tracking)
+function checkUploadProgress() {
+    // This would check upload progress via AJAX
+    // Implementation depends on progress tracking system
+}
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>

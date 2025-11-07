@@ -1,0 +1,766 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Configuración - MediciónGeo{% endblock %}
+
+{% block page_title %}Configuración{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item active">Configuración</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .settings-header {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .settings-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .settings-subtitle {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+    }
+
+    .settings-sections {
+        display: grid;
+        gap: 2rem;
+    }
+
+    .settings-section {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+    }
+
+    .section-title {
+        color: var(--text-primary);
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        font-size: 1.25rem;
+    }
+
+    .section-title i {
+        margin-right: 0.75rem;
+        color: var(--primary);
+        font-size: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .form-control {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-sm);
+        color: var(--text-primary);
+        padding: 0.75rem 1rem;
+        width: 100%;
+        transition: var(--transition);
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-select {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-sm);
+        color: var(--text-primary);
+        padding: 0.75rem 1rem;
+        width: 100%;
+        transition: var(--transition);
+    }
+
+    .form-select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-check {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .form-check-input {
+        margin-right: 0.75rem;
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    .form-check-label {
+        color: var(--text-primary);
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .form-text {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .btn-save {
+        background: var(--gradient-primary);
+        border: none;
+        border-radius: var(--border-radius);
+        color: white;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: var(--transition);
+        cursor: pointer;
+    }
+
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px var(--shadow);
+    }
+
+    .account-info {
+        background: var(--bg-tertiary);
+        border-radius: var(--border-radius-sm);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .info-item:last-child {
+        border-bottom: none;
+    }
+
+    .info-label {
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.875rem;
+    }
+
+    .info-value {
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .preference-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .preference-item {
+        background: var(--bg-tertiary);
+        border-radius: var(--border-radius-sm);
+        padding: 1.5rem;
+    }
+
+    .preference-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .preference-description {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+    }
+
+    .danger-zone {
+        border: 2px solid var(--danger);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        background: rgba(239, 68, 68, 0.05);
+    }
+
+    .danger-zone .section-title {
+        color: var(--danger);
+    }
+
+    .btn-danger {
+        background: var(--danger);
+        border: none;
+        border-radius: var(--border-radius);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: var(--transition);
+        cursor: pointer;
+    }
+
+    .btn-danger:hover {
+        background: #dc2626;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: var(--border-radius-sm);
+        margin-bottom: 1rem;
+        border: 1px solid;
+    }
+
+    .alert-info {
+        background: rgba(59, 130, 246, 0.1);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .alert-warning {
+        background: rgba(245, 158, 11, 0.1);
+        border-color: #f59e0b;
+        color: #f59e0b;
+    }
+
+    @media (max-width: 768px) {
+        .preference-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .info-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+    }
+
+    /* Modal customization for delete confirmation */
+    #deleteAccountModal .modal-content {
+        background: #0F0F23 !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255,255,255,0.06) !important;
+    }
+
+    #deleteAccountModal .modal-header,
+    #deleteAccountModal .modal-body,
+    #deleteAccountModal .modal-footer {
+        color: #ffffff !important;
+    }
+
+    #deleteAccountModal .form-label {
+        color: #ffffff;
+    }
+
+    #deleteAccountModal .form-control {
+        background: rgba(255,255,255,0.04);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    #deleteAccountModal .form-control::placeholder {
+        color: rgba(255,255,255,0.6);
+    }
+
+    #deleteAccountModal .btn-close {
+        filter: invert(1) brightness(1.5);
+        opacity: 0.9;
+    }
+
+    #deleteAccountModal .alert {
+        background: rgba(220,53,69,0.12);
+        color: #ffffff;
+        border-color: rgba(220,53,69,0.25);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <!-- Settings Header -->
+    <div class="settings-header">
+        <h1 class="settings-title">Configuración de Usuario</h1>
+        <p class="settings-subtitle">Personaliza tu experiencia en MediciónGeo</p>
+    </div>
+
+    <div class="settings-sections">
+        <!-- Account Information -->
+        <div class="settings-section">
+            <h2 class="section-title">
+                <i class="fas fa-user"></i>
+                Información de la Cuenta
+            </h2>
+            
+            <div class="account-info">
+                <div class="info-item">
+                    <span class="info-label">Nombre de usuario</span>
+                    <span class="info-value">{{ account_info.username }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Correo electrónico</span>
+                    <span class="info-value">{{ account_info.email }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Nombre completo</span>
+                    <span class="info-value">{{ account_info.first_name }} {{ account_info.last_name }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Miembro desde</span>
+                    <span class="info-value">{{ account_info.date_joined|date:"d/m/Y H:i" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Último acceso</span>
+                    <span class="info-value">{{ account_info.last_login|date:"d/m/Y H:i" }}</span>
+                </div>
+            </div>
+
+            <!--
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                Para cambiar tu información personal, contacta al administrador del sistema.
+            </div>
+            -->
+        </div>
+
+         <!-- Preferences Form -->
+         <form method="post" action="{% url 'core:user_settings' %}" id="preferences-form">
+             {% csrf_token %}
+             
+             <!-- Preferences -->
+             <div class="settings-section">
+                 <h2 class="section-title">
+                     <i class="fas fa-cog"></i>
+                     Preferencias de Usuario
+                 </h2>
+
+                 <div class="preference-grid">
+                     <div class="preference-item">
+                         <h4 class="preference-title">Unidad de Medida Predeterminada</h4>
+                         <p class="preference-description">Selecciona la unidad de medida que prefieres usar por defecto en tus mediciones.</p>
+                         {{ preferences_form.default_unit }}
+                     </div>
+
+                     <div class="preference-item">
+                         <h4 class="preference-title">Tema de Interfaz</h4>
+                         <p class="preference-description">Elige entre tema claro u oscuro para la interfaz de usuario.</p>
+                         {{ preferences_form.theme }}
+                     </div>
+
+                     <div class="preference-item">
+                         <h4 class="preference-title">Notificaciones por Email</h4>
+                         <p class="preference-description">Recibe notificaciones por correo electrónico sobre tu actividad.</p>
+                         <div class="form-check">
+                             {{ preferences_form.email_notifications }}
+                             <label class="form-check-label" for="{{ preferences_form.email_notifications.id_for_label }}">
+                                 Recibir notificaciones por email
+                             </label>
+                         </div>
+                     </div>
+
+                     <div class="preference-item">
+                         <h4 class="preference-title">Sugerencias de Calibración</h4>
+                         <p class="preference-description">Recibe sugerencias automáticas para calibrar imágenes no calibradas.</p>
+                         <div class="form-check">
+                             {{ preferences_form.auto_calibration_suggestions }}
+                             <label class="form-check-label" for="{{ preferences_form.auto_calibration_suggestions.id_for_label }}">
+                                 Mostrar sugerencias de calibración
+                             </label>
+                         </div>
+                     </div>
+                 </div>
+             </div>
+<br>
+             <!-- Application Settings -->
+             <div class="settings-section">
+                 <h2 class="section-title">
+                     <i class="fas fa-tools"></i>
+                     Configuración de la Aplicación
+                 </h2>
+
+                 <div class="preference-grid">
+                     <div class="preference-item">
+                         <h4 class="preference-title">Calidad de Imagen</h4>
+                         <p class="preference-description">Ajusta la calidad de procesamiento de imágenes.</p>
+                         {{ preferences_form.image_quality }}
+                     </div>
+
+                     <div class="preference-item">
+                         <h4 class="preference-title">Auto-guardado</h4>
+                         <p class="preference-description">Guarda automáticamente los cambios en mediciones y formas.</p>
+                         <div class="form-check">
+                             {{ preferences_form.auto_save }}
+                             <label class="form-check-label" for="{{ preferences_form.auto_save.id_for_label }}">
+                                 Habilitar auto-guardado
+                             </label>
+                         </div>
+                     </div>
+
+                     <div class="preference-item">
+                         <h4 class="preference-title">Detección Automática</h4>
+                         <p class="preference-description">Detecta automáticamente formas geométricas en imágenes nuevas.</p>
+                         <div class="form-check">
+                             {{ preferences_form.auto_detection }}
+                             <label class="form-check-label" for="{{ preferences_form.auto_detection.id_for_label }}">
+                                 Habilitar detección automática
+                             </label>
+                         </div>
+                     </div>
+
+                     <div class="preference-item">
+                         <h4 class="preference-title">Respaldo de Datos</h4>
+                         <p class="preference-description">Crea respaldos automáticos de tus proyectos.</p>
+                         <div class="form-check">
+                             {{ preferences_form.auto_backup }}
+                             <label class="form-check-label" for="{{ preferences_form.auto_backup.id_for_label }}">
+                                 Habilitar respaldo automático
+                             </label>
+                         </div>
+                     </div>
+                 </div>
+
+                 <button type="submit" class="btn-save mt-3">
+                     <i class="fas fa-save me-2"></i>
+                     Guardar Configuración
+                 </button>
+             </div>
+         </form>
+
+        <!-- Danger Zone -->
+        <div class="settings-section danger-zone">
+            <h2 class="section-title">
+                <i class="fas fa-exclamation-triangle"></i>
+                Zona de Peligro
+            </h2>
+
+            <!--
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Advertencia:</strong> Las acciones en esta sección son irreversibles. Procede con precaución.
+            </div>
+            -->
+
+            <div class="preference-item">
+                <h4 class="preference-title">Exportar Datos</h4>
+                <p class="preference-description">Descarga todos tus datos en formato JSON para respaldo.</p>
+                <button type="button" class="btn-save" onclick="exportData()">
+                    <i class="fas fa-download me-2"></i>
+                    Exportar Mis Datos
+                </button>
+            </div>
+<br>
+            <div class="preference-item">
+                <h4 class="preference-title">Eliminar Cuenta</h4>
+                <p class="preference-description">Elimina permanentemente tu cuenta y todos los datos asociados.</p>
+                <button type="button" class="btn-danger" onclick="openDeleteModal()">
+                    <i class="fas fa-trash me-2"></i>
+                    Eliminar Cuenta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+ <script>
+ // Mostrar mensaje de éxito cuando se carga la página después de guardar
+ document.addEventListener('DOMContentLoaded', function() {
+     // Verificar si hay mensajes de éxito en la URL
+     const urlParams = new URLSearchParams(window.location.search);
+     if (urlParams.get('saved') === 'true') {
+         showSuccessMessage('Configuración guardada exitosamente');
+     }
+ });
+
+ function showSuccessMessage(message) {
+     // Crear elemento de mensaje de éxito
+     const successDiv = document.createElement('div');
+     successDiv.className = 'alert alert-success';
+     successDiv.style.cssText = `
+         position: fixed;
+         top: 20px;
+         right: 20px;
+         z-index: 9999;
+         background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+         color: white;
+         padding: 1rem 1.5rem;
+         border-radius: 8px;
+         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+         animation: slideIn 0.3s ease-out;
+     `;
+     successDiv.innerHTML = `
+         <i class="fas fa-check-circle me-2"></i>
+         ${message}
+     `;
+     
+     // Agregar estilos de animación
+     const style = document.createElement('style');
+     style.textContent = `
+         @keyframes slideIn {
+             from { transform: translateX(100%); opacity: 0; }
+             to { transform: translateX(0); opacity: 1; }
+         }
+         .alert-success {
+             background: linear-gradient(135deg, #48bb78 0%, #38a169 100%) !important;
+             border: none !important;
+         }
+     `;
+     document.head.appendChild(style);
+     
+     document.body.appendChild(successDiv);
+     
+     // Remover el mensaje después de 3 segundos
+     setTimeout(() => {
+         successDiv.style.animation = 'slideIn 0.3s ease-out reverse';
+         setTimeout(() => {
+             if (successDiv.parentNode) {
+                 successDiv.parentNode.removeChild(successDiv);
+             }
+         }, 300);
+     }, 3000);
+ }
+
+ // Agregar efecto de loading al botón de guardar y actualizar tema
+ document.addEventListener('DOMContentLoaded', function() {
+     const saveButton = document.querySelector('.btn-save');
+     const form = document.querySelector('#preferences-form');
+     
+     if (form && saveButton) {
+         form.addEventListener('submit', function(e) {
+             saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Guardando...';
+             saveButton.disabled = true;
+             
+             // Update theme only when form is submitted
+             const themeSelect = form.querySelector('select[name="theme"]');
+             if (themeSelect) {
+                 const newTheme = themeSelect.value;
+                 if (newTheme !== 'auto') {
+                     // Apply theme when saving
+                     document.documentElement.setAttribute('data-bs-theme', newTheme);
+                     localStorage.setItem('theme', newTheme);
+                     
+                     // Update theme toggle button in navbar
+                     const icon = document.getElementById('theme-icon');
+                     const text = document.getElementById('theme-text');
+                     if (icon && text) {
+                         if (newTheme === 'dark') {
+                             icon.className = 'fas fa-sun me-2';
+                             text.textContent = 'Modo Claro';
+                         } else {
+                             icon.className = 'fas fa-moon me-2';
+                             text.textContent = 'Modo Oscuro';
+                         }
+                     }
+                     
+                     // Update user preferences in database
+                     updateUserThemeInDatabase(newTheme);
+                 }
+             }
+         });
+     }
+ });
+
+ // Update user theme in database
+ function updateUserThemeInDatabase(theme) {
+     fetch('{% url "core:update_theme" %}', {
+         method: 'POST',
+         headers: {
+             'Content-Type': 'application/json',
+             'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+         },
+         body: JSON.stringify({theme: theme})
+     })
+     .then(response => response.json())
+     .then(data => {
+         if (data.success) {
+             console.log('Theme updated in database successfully');
+         }
+     })
+     .catch(error => {
+         console.error('Error updating theme in database:', error);
+     });
+ }
+
+ function exportData() {
+     // Implementar lógica para exportar datos
+    // Llamar al endpoint que genera el JSON con todos los datos del usuario
+    const url = '{% url "core:export_user_data" %}';
+
+    fetch(url, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Error descargando los datos');
+        return response.blob();
+    })
+    .then(blob => {
+        // Forzar descarga
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `mis_datos_{{ request.user.username }}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+    })
+    .catch(err => {
+        console.error(err);
+        alert('No se pudo exportar los datos. Intenta nuevamente.');
+    });
+ }
+
+ function deleteAccount() {
+    if (!confirm('¿Estás seguro de que quieres eliminar tu cuenta? Esta acción NO se puede deshacer.')) return;
+
+    const url = '{% url "core:delete_account" %}';
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    // Prompt for current password as a confirmation step
+    const password = prompt('Ingresa tu contraseña para confirmar la eliminación de tu cuenta:');
+    if (!password) {
+        alert('Eliminación cancelada: se requiere la contraseña.');
+        return;
+    }
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf,
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({password: password})
+    })
+    .then(resp => resp.json())
+    .then(data => {
+        if (data.success) {
+            // Redirect to homepage or login
+            window.location.href = data.redirect_url || '/';
+        } else {
+            alert('No se pudo eliminar la cuenta: ' + (data.error || 'error desconocido'));
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Error eliminando la cuenta. Intenta nuevamente.');
+    });
+ }
+ </script>
+<!-- Delete account modal -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteAccountModalLabel">Confirmar eliminación de cuenta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p>Esta acción eliminará permanentemente tu cuenta y todos los datos asociados. Esta operación no se puede deshacer.</p>
+                <div id="delete-error" class="alert alert-danger d-none" role="alert"></div>
+
+                <div class="mb-3">
+                    <label for="delete-password" class="form-label">Ingresa tu contraseña para confirmar</label>
+                    <input type="password" class="form-control" id="delete-password" placeholder="Tu contraseña">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="confirm-delete-btn" class="btn btn-danger">Eliminar cuenta</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openDeleteModal() {
+        // reset state
+        const err = document.getElementById('delete-error');
+        err.classList.add('d-none');
+        err.textContent = '';
+        document.getElementById('delete-password').value = '';
+
+        // show modal (Bootstrap 5)
+        var deleteModal = new bootstrap.Modal(document.getElementById('deleteAccountModal'));
+        deleteModal.show();
+
+        // attach handler once
+        const btn = document.getElementById('confirm-delete-btn');
+        btn.onclick = function() { submitDeleteAccount(deleteModal); };
+}
+
+function submitDeleteAccount(modalInstance) {
+        const password = document.getElementById('delete-password').value;
+        const err = document.getElementById('delete-error');
+        if (!password) {
+                err.textContent = 'La contraseña es obligatoria.';
+                err.classList.remove('d-none');
+                return;
+        }
+
+        const url = '{% url "core:delete_account" %}';
+        const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch(url, {
+                method: 'POST',
+                headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrf,
+                        'Accept': 'application/json'
+                },
+                body: JSON.stringify({password: password})
+        })
+        .then(resp => resp.json())
+        .then(data => {
+                if (data.success) {
+                        // close modal and redirect
+                        modalInstance.hide();
+                        window.location.href = data.redirect_url || '/';
+                } else {
+                        const message = data.error || 'Error desconocido';
+                        err.textContent = message;
+                        err.classList.remove('d-none');
+                }
+        })
+        .catch(errFetch => {
+                err.textContent = 'Error de red. Intenta nuevamente.';
+                err.classList.remove('d-none');
+                console.error(errFetch);
+        });
+}
+</script>
+{% endblock %}

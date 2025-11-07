@@ -1,0 +1,449 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Mi Perfil - MediciónGeo{% endblock %}
+
+{% block page_title %}Mi Perfil{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item active">Mi Perfil</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .profile-header {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 3rem;
+        color: white;
+    }
+
+    .profile-name {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .profile-email {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+    }
+
+    .profile-meta {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .meta-item {
+        text-align: center;
+    }
+
+    .meta-label {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+    }
+
+    .meta-value {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 1rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        text-align: center;
+        transition: var(--transition);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px var(--shadow);
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 1.5rem;
+        color: white;
+    }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.875rem;
+    }
+
+    .content-sections {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .section-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+    }
+
+    .section-title {
+        color: var(--text-primary);
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .section-title i {
+        margin-right: 0.5rem;
+        color: var(--primary);
+    }
+
+    .project-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: var(--bg-tertiary);
+        border-radius: var(--border-radius-sm);
+        margin-bottom: 0.5rem;
+        transition: var(--transition);
+    }
+
+    .project-item:hover {
+        background: var(--bg-hover);
+    }
+
+    .project-info h6 {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .project-meta {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .project-stats {
+        text-align: right;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+
+    .image-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        background: var(--bg-tertiary);
+        border-radius: var(--border-radius-sm);
+        margin-bottom: 0.5rem;
+        transition: var(--transition);
+    }
+
+    .image-item:hover {
+        background: var(--bg-hover);
+    }
+
+    .image-thumbnail {
+        width: 50px;
+        height: 50px;
+        border-radius: var(--border-radius-sm);
+        background: var(--bg-primary);
+        margin-right: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+    }
+
+    .image-info {
+        flex: 1;
+    }
+
+    .image-name {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .image-meta {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .image-status {
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-calibrated {
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        color: white;
+    }
+
+    .status-uncalibrated {
+        background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        color: white;
+    }
+
+    .most-active-project {
+        background: var(--bg-tertiary);
+        border-radius: var(--border-radius-sm);
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .most-active-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .most-active-name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .most-active-stats {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-muted);
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+    }
+
+    .empty-state h6 {
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .content-sections {
+            grid-template-columns: 1fr;
+        }
+        
+        .profile-meta {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <div class="profile-avatar">
+            <i class="fas fa-user"></i>
+        </div>
+        <h1 class="profile-name">{{ user.get_full_name|default:user.username }}</h1>
+        <p class="profile-email">{{ user.email }}</p>
+        <div class="profile-meta">
+            <div class="meta-item">
+                <div class="meta-label">Miembro desde</div>
+                <div class="meta-value">{{ user_stats.member_since|date:"d/m/Y" }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Último acceso</div>
+                <div class="meta-value">{{ user_stats.last_login|date:"d/m/Y H:i" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Grid -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-folder-open"></i>
+            </div>
+            <div class="stat-number">{{ user_stats.total_projects }}</div>
+            <div class="stat-label">Proyectos Totales</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-images"></i>
+            </div>
+            <div class="stat-number">{{ user_stats.total_images }}</div>
+            <div class="stat-label">Imágenes Procesadas</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-ruler"></i>
+            </div>
+            <div class="stat-number">{{ user_stats.total_measurements }}</div>
+            <div class="stat-label">Mediciones Realizadas</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-number">{{ user_stats.calibrated_images }}</div>
+            <div class="stat-label">Imágenes Calibradas</div>
+        </div>
+    </div>
+
+    <!-- Content Sections -->
+    <div class="content-sections">
+        <!-- Recent Projects -->
+        <div class="section-card">
+            <h3 class="section-title">
+                <i class="fas fa-folder"></i>
+                Proyectos Recientes
+            </h3>
+            {% if recent_projects %}
+                {% for project in recent_projects %}
+                <div class="project-item">
+                    <div class="project-info">
+                        <h6>{{ project.name }}</h6>
+                        <div class="project-meta">
+                            Creado: {{ project.created_at|date:"d/m/Y" }}
+                        </div>
+                    </div>
+                    <div class="project-stats">
+                        {{ project.images.count }} imágenes
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-folder-open"></i>
+                    <h6>No hay proyectos</h6>
+                    <p>Comienza creando tu primer proyecto</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Recent Images -->
+        <div class="section-card">
+            <h3 class="section-title">
+                <i class="fas fa-images"></i>
+                Imágenes Recientes
+            </h3>
+            {% if recent_images %}
+                {% for image in recent_images %}
+                <div class="image-item">
+                    <div class="image-thumbnail">
+                        <i class="fas fa-image"></i>
+                    </div>
+                    <div class="image-info">
+                        <div class="image-name">{{ image.name }}</div>
+                        <div class="image-meta">
+                            {{ image.project.name }} • {{ image.uploaded_at|date:"d/m/Y" }}
+                        </div>
+                    </div>
+                    <div class="image-status {% if image.is_calibrated %}status-calibrated{% else %}status-uncalibrated{% endif %}">
+                        {% if image.is_calibrated %}Calibrada{% else %}Sin calibrar{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-images"></i>
+                    <h6>No hay imágenes</h6>
+                    <p>Sube tu primera imagen a un proyecto</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Most Active Project -->
+    {% if most_active_project %}
+    <div class="section-card">
+        <h3 class="section-title">
+            <i class="fas fa-star"></i>
+            Proyecto Más Activo
+        </h3>
+        <div class="most-active-project">
+            <div class="most-active-name">{{ most_active_project.name }}</div>
+            <div class="most-active-stats">
+                {{ most_active_project.images.count }} imágenes • 
+                {{ most_active_project.measurements.count }} mediciones
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

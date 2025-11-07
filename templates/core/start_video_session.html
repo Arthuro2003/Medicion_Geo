@@ -1,0 +1,402 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}Iniciar Sesión de Video - {{ project.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Theme-aware styles using CSS variables defined in base.html so contrast
+     is preserved in both light and dark modes. */
+  .camera-preview {
+    background: var(--bg-secondary);
+    border: 2px dashed var(--border-color);
+    min-height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: var(--text-muted);
+    padding: 12px;
+    border-radius: 0;
+  }
+
+  .camera-preview p {
+    color: var(--text-muted);
+  }
+
+  .camera-icon {
+    font-size: 3rem;
+    color: var(--text-secondary);
+  }
+
+  .form-section {
+    background: var(--bg-primary);
+    border-radius: 8px;
+    padding: 12px; /* smaller padding to match request */
+    box-shadow: 0 2px 4px var(--shadow);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  /* Make all sections stretch to container edges like features section */
+  .main-row, .instructions-row {
+    margin-left: -15px;
+    margin-right: -15px;
+    width: calc(100% + 30px);
+  }
+
+  .main-row {
+    align-items: stretch;
+  }
+  .main-row > [class*="col-"] {
+    display: flex;
+    flex-direction: column;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .main-row .form-section {
+    flex: 1 1 auto;
+    border-radius: 0;
+    margin: 0;
+  }
+
+  .instructions-row .col-12 {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  
+  .instructions-row .form-section {
+    border-radius: 0;
+    margin: 0;
+    max-width: none;
+  }
+
+  /* Ensure form labels, inputs and buttons inside the section maintain good contrast */
+  .form-section .form-label,
+  .form-section label {
+    color: var(--text-primary);
+  }
+
+  .form-section .form-control {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+  }
+
+  .form-section .btn-outline-primary {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: transparent;
+  }
+
+  /* Make card inside this template follow theme variables too */
+  .card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+  }
+
+  /* Preview controls: center both vertically and horizontally and keep 15px gap */
+  .preview-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    padding: 8px 0 0 0;
+  }
+
+  /* Instructions section should be full-width and centered between top components */
+  .instructions-row .form-section {
+    max-width: 1100px;
+    margin: 0 auto;
+    text-align: left;
+  }
+
+  /* Make features card reach the container edges (flush with container) */
+  .features-bleed .card {
+    width: calc(100% + 30px);
+    margin-left: -15px;
+    margin-right: -15px;
+    border-radius: 8px;
+  }
+
+  /* Headings and breadcrumb: ensure high contrast in dark mode */
+  .form-section h4, .form-section h5, .card-header h5, .content-header h1 {
+    color: var(--text-primary);
+    text-shadow: none;
+  }
+
+  .breadcrumb-item a, .breadcrumb-item {
+    color: var(--text-secondary);
+  }
+
+  [data-bs-theme="dark"] .breadcrumb-item a, [data-bs-theme="dark"] .breadcrumb-item {
+    color: #cbd5e1; /* lighter for readability */
+  }
+
+  /* Fallback for browsers that don't support CSS variables or when using prefers-color-scheme */
+  @media (prefers-color-scheme: dark) {
+    .camera-preview { background: #1a1a2e; color: #cbd5e1; border-color: #2d3748; }
+    .form-section { background: #0f0f23; color: #fff; border-color: #2d3748; }
+    .camera-icon { color: #e2e8f0; }
+    .form-section .form-control { background: #16213e; color: #e2e8f0; border-color: #2d3748; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container px-0"> <!-- Remove padding from container -->
+  <div class="row justify-content-center g-0"> <!-- Remove gutter -->
+    <div class="col-lg-10">
+      <!-- Header -->
+      <div class="text-center mb-4">
+        <h1 class="h3 mb-1">Iniciar Sesión de Video</h1>
+        <p class="text-muted">Proyecto: {{ project.name }}</p>
+      </div>
+
+      <!-- Navigation -->
+      <div class="mb-4">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <a href="{% url 'core:project_detail' project.pk %}">{{ project.name }}</a>
+            </li>
+            <li class="breadcrumb-item">
+              <a href="{% url 'core:video_dashboard' project.pk %}">Video en Tiempo Real</a>
+            </li>
+            <li class="breadcrumb-item active">Nueva Sesión</li>
+          </ol>
+        </nav>
+      </div>
+
+  <div class="row main-row">
+        <!-- Form Section -->
+        <div class="col-md-6" style="padding-right: 15px;">
+          <div class="form-section">
+            <h4 class="mb-3">
+              <i class="fas fa-video me-2"></i>Configuración de la Sesión
+            </h4>
+            
+            <form method="post">
+              {% csrf_token %}
+              {{ form|crispy }}
+              
+              <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn btn-primary btn-lg">
+                  <i class="fas fa-play me-2"></i>Iniciar Sesión de Video
+                </button>
+                <a href="{% url 'core:video_dashboard' project.pk %}" class="btn btn-outline-secondary">
+                  <i class="fas fa-arrow-left me-2"></i>Cancelar
+                </a>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Camera Preview Section -->
+        <div class="col-md-6">
+          <div class="form-section">
+            <h4 class="mb-3">
+              <i class="fas fa-camera me-2"></i>Vista Previa de Cámara
+            </h4>
+            
+            <div class="camera-preview" id="cameraPreview">
+              <i class="fas fa-camera camera-icon mb-3"></i>
+              <p class="text-muted mb-0">Selecciona un índice de cámara para ver la vista previa</p>
+            </div>
+            
+            <div class="preview-controls">
+              <button type="button" class="btn btn-outline-primary btn-sm" onclick="testCamera()">
+                <i class="fas fa-eye me-1"></i>Probar Cámara
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="stopCameraTest()">
+                <i class="fas fa-stop me-1"></i>Detener Prueba
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Instructions (full-width centered between top components) -->
+      <div class="row instructions-row mt-3">
+        <div class="col-12">
+          <div class="form-section">
+            <h5 class="mb-3 text-center">
+              <i class="fas fa-info-circle me-2"></i>Instrucciones
+            </h5>
+            <ul class="list-unstyled d-flex justify-content-center">
+              <li class="me-4">
+                <i class="fas fa-check text-success me-2"></i>
+                Asegúrate de que tu cámara esté conectada y funcionando
+              </li>
+              <li class="me-4">
+                <i class="fas fa-check text-success me-2"></i>
+                Usa la resolución maxima de la camara
+              </li>
+              <li>
+                <i class="fas fa-check text-success me-2"></i>
+                Prueba la cámara antes de iniciar la sesión
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- Features Info -->
+      <div class="row mt-4 features-bleed">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">
+              <h5 class="mb-0">
+                <i class="fas fa-star me-2"></i>Características de Video en Tiempo Real
+              </h5>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <div class="text-center">
+                    <i class="fas fa-ruler fa-2x text-primary mb-2"></i>
+                    <h6>Medición Instantánea</h6>
+                    <p class="text-muted small">Mide distancias en tiempo real haciendo clic en el video</p>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <div class="text-center">
+                    <i class="fas fa-shapes fa-2x text-success mb-2"></i>
+                    <h6>Detección Automática</h6>
+                    <p class="text-muted small">Detecta formas geométricas automáticamente</p>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <div class="text-center">
+                    <i class="fas fa-save fa-2x text-info mb-2"></i>
+                    <h6>Guardado Seguro</h6>
+                    <p class="text-muted small">Guarda todas las mediciones de la sesión de manera segura</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let testStream = null;
+  let testVideo = null;
+
+  async function testCamera() {
+    let cameraIndex = 0;  // Default to first camera
+    const cameraIndexInput = document.getElementById('id_camera_index');
+    if (cameraIndexInput && !isNaN(parseInt(cameraIndexInput.value))) {
+      cameraIndex = parseInt(cameraIndexInput.value);
+    }
+    const preview = document.getElementById('cameraPreview');
+    
+    // Clear previous content
+    preview.innerHTML = '';
+    
+    // Create video element
+    testVideo = document.createElement('video');
+    testVideo.style.width = '100%';
+    testVideo.style.height = '200px';
+    testVideo.style.objectFit = 'cover';
+    testVideo.style.borderRadius = '8px';
+    testVideo.autoplay = true;
+    testVideo.muted = true;
+    
+    preview.appendChild(testVideo);
+
+    try {
+      // Primero obtener la lista de dispositivos
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      
+      if (videoDevices.length === 0) {
+        throw new Error('No se encontraron cámaras disponibles');
+      }
+      
+      if (cameraIndex >= videoDevices.length) {
+        throw new Error(`No se encontró la cámara con índice ${cameraIndex}. Hay ${videoDevices.length} cámara(s) disponible(s)`);
+      }
+
+      // Obtener el deviceId correcto basado en el índice
+      const deviceId = videoDevices[cameraIndex]?.deviceId;
+      
+      // Get camera stream
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: deviceId ? { deviceId: { exact: deviceId } } : true
+      });
+      testStream = stream;
+      testVideo.srcObject = stream;
+      
+      // Add success message
+      const successMsg = document.createElement('div');
+      successMsg.className = 'alert alert-success mt-2 mb-0';
+      successMsg.innerHTML = '<i class="fas fa-check me-1"></i>Cámara funcionando correctamente';
+      preview.appendChild(successMsg);      
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      
+      // Add detailed error message
+      const errorMsg = document.createElement('div');
+      errorMsg.className = 'alert alert-danger mt-2 mb-0';
+      errorMsg.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>${error.message || 'No se pudo acceder a la cámara'}`;
+      preview.appendChild(errorMsg);
+
+      // Restaurar la vista previa original
+      preview.innerHTML = `
+        <i class="fas fa-camera camera-icon mb-3"></i>
+        <p class="text-muted mb-0">No se pudo acceder a la cámara. Por favor, verifica que:
+          <br>- La cámara esté conectada
+          <br>- Hayas dado permisos al navegador
+          <br>- El índice de cámara sea correcto</p>
+        <div class="mt-3">
+          <button type="button" class="btn btn-outline-primary btn-sm" onclick="testCamera()">
+            <i class="fas fa-sync me-1"></i>Intentar de nuevo
+          </button>
+        </div>
+      `;
+    }
+  }
+
+  function stopCameraTest() {
+    if (testStream) {
+      testStream.getTracks().forEach(track => track.stop());
+      testStream = null;
+    }
+    
+    const preview = document.getElementById('cameraPreview');
+    preview.innerHTML = `
+      <i class="fas fa-camera camera-icon mb-3"></i>
+      <p class="text-muted mb-0">Selecciona un índice de cámara para ver la vista previa</p>
+    `;
+  }
+
+  // Update camera preview when camera index changes
+  const cameraIndexInput = document.getElementById('id_camera_index');
+  if (cameraIndexInput) {
+    cameraIndexInput.addEventListener('change', function() {
+      if (testStream) {
+        stopCameraTest();
+      }
+    });
+  }
+
+  // Clean up on page unload
+  window.addEventListener('beforeunload', function() {
+    if (testStream) {
+      testStream.getTracks().forEach(track => track.stop());
+    }
+  });
+</script>
+{% endblock %}

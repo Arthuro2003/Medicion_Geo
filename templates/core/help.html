@@ -1,0 +1,689 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Ayuda - MediciónGeo{% endblock %}
+
+{% block page_title %}Guía de Usuario{% endblock %}
+
+{% block breadcrumb %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+      <li class="breadcrumb-item active">Ayuda</li>
+    </ol>
+  </nav>
+{% endblock %}
+
+{% block extra_css %}
+  <style>
+      .help-container {
+          max-width: 1200px;
+          margin: 0 auto;
+      }
+
+      .help-header {
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: var(--border-radius);
+          padding: 3rem 2rem;
+          margin-bottom: 2rem;
+          text-align: center;
+      }
+
+      .help-title {
+          font-size: 2.5rem;
+          font-weight: 700;
+          background: var(--gradient-primary);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin-bottom: 1rem;
+      }
+
+      .help-subtitle {
+          color: var(--text-secondary);
+          font-size: 1.2rem;
+          margin-bottom: 2rem;
+      }
+
+      .help-search {
+          max-width: 500px;
+          margin: 0 auto;
+          position: relative;
+      }
+
+      .search-input {
+          width: 100%;
+          background: var(--bg-tertiary);
+          border: 2px solid var(--border-color);
+          color: var(--text-primary);
+          border-radius: 25px;
+          padding: 1rem 1.5rem 1rem 3rem;
+          font-size: 1rem;
+          transition: var(--transition);
+      }
+
+      .search-input:focus {
+          background: var(--bg-secondary);
+          border-color: var(--primary);
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+          color: var(--text-primary);
+      }
+
+      .search-icon {
+          position: absolute;
+          left: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          color: var(--text-muted);
+      }
+
+      .help-sections {
+          display: grid;
+          gap: 2rem;
+      }
+
+      .help-section {
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: var(--border-radius);
+          overflow: hidden;
+          transition: var(--transition);
+      }
+
+      .help-section:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px var(--shadow);
+      }
+
+      .section-header {
+          background: var(--gradient-primary);
+          color: white;
+          padding: 1.5rem 2rem;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          transition: var(--transition);
+      }
+
+      .section-header:hover {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+
+      .section-title {
+          display: flex;
+          align-items: center;
+          font-size: 1.3rem;
+          font-weight: 700;
+          margin: 0;
+      }
+
+      .section-icon {
+          margin-right: 1rem;
+          font-size: 1.5rem;
+      }
+
+      .section-toggle {
+          font-size: 1.2rem;
+          transition: var(--transition);
+      }
+
+      .section-content {
+          padding: 2rem;
+          display: none;
+      }
+
+      .section-content.active {
+          display: block;
+      }
+
+      .section-content.active + .section-header .section-toggle {
+          transform: rotate(180deg);
+      }
+
+      .subsection {
+          margin-bottom: 2rem;
+          padding-bottom: 2rem;
+          border-bottom: 1px solid var(--border-color);
+      }
+
+      .subsection:last-child {
+          margin-bottom: 0;
+          padding-bottom: 0;
+          border-bottom: none;
+      }
+
+      .subsection-title {
+          color: var(--text-primary);
+          font-size: 1.2rem;
+          font-weight: 700;
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+      }
+
+      .subsection-icon {
+          margin-right: 0.5rem;
+          color: var(--primary);
+      }
+
+      .subsection-content {
+          color: var(--text-secondary);
+          line-height: 1.6;
+          margin-bottom: 1.5rem;
+      }
+
+      .steps-list {
+          background: var(--bg-tertiary);
+          border-radius: var(--border-radius-sm);
+          padding: 1.5rem;
+          margin: 1rem 0;
+      }
+
+      .steps-list ol {
+          margin: 0;
+          padding-left: 1.5rem;
+      }
+
+      .steps-list li {
+          margin-bottom: 0.75rem;
+          color: var(--text-primary);
+          font-weight: 500;
+      }
+
+      .steps-list li:last-child {
+          margin-bottom: 0;
+      }
+
+      .tips-list {
+          background: linear-gradient(135deg, #fef5e7 0%, #fed7aa 100%);
+          border: 1px solid #f6ad55;
+          border-radius: var(--border-radius-sm);
+          padding: 1.5rem;
+          margin: 1rem 0;
+      }
+
+      [data-bs-theme="dark"] .tips-list {
+          background: linear-gradient(135deg, #4a2c17 0%, #5a3a1a 100%);
+          border-color: #ed8936;
+      }
+
+      .tips-list ul {
+          margin: 0;
+          padding-left: 1.5rem;
+      }
+
+      .tips-list li {
+          margin-bottom: 0.5rem;
+          color: #744210;
+          font-weight: 500;
+      }
+
+      [data-bs-theme="dark"] .tips-list li {
+          color: #f6ad55;
+      }
+
+      .types-list, .formats-list, .parameters-list, .problems-list, .requirements-list {
+          background: var(--bg-tertiary);
+          border-radius: var(--border-radius-sm);
+          padding: 1.5rem;
+          margin: 1rem 0;
+      }
+
+      .types-list ul, .formats-list ul, .parameters-list ul, .problems-list ul, .requirements-list ul {
+          margin: 0;
+          padding-left: 1.5rem;
+      }
+
+      .types-list li, .formats-list li, .parameters-list li, .problems-list li, .requirements-list li {
+          margin-bottom: 0.75rem;
+          color: var(--text-primary);
+          font-weight: 500;
+      }
+
+      .types-list li:last-child, .formats-list li:last-child, .parameters-list li:last-child, .problems-list li:last-child, .requirements-list li:last-child {
+          margin-bottom: 0;
+      }
+
+      .quick-actions {
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: var(--border-radius);
+          padding: 2rem;
+          margin-bottom: 2rem;
+      }
+
+      .quick-actions-title {
+          color: var(--text-primary);
+          font-size: 1.3rem;
+          font-weight: 700;
+          margin-bottom: 1.5rem;
+          display: flex;
+          align-items: center;
+      }
+
+      .quick-actions-title i {
+          margin-right: 0.5rem;
+          color: var(--primary);
+      }
+
+      .actions-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 1rem;
+      }
+
+      .action-card {
+          background: var(--bg-tertiary);
+          border: 1px solid var(--border-color);
+          border-radius: var(--border-radius-sm);
+          padding: 1.5rem;
+          text-align: center;
+          transition: var(--transition);
+          cursor: pointer;
+      }
+
+      .action-card:hover {
+          background: var(--bg-secondary);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px var(--shadow);
+      }
+
+      .action-icon {
+          width: 50px;
+          height: 50px;
+          border-radius: 50%;
+          background: var(--gradient-primary);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 1rem;
+          color: white;
+          font-size: 1.2rem;
+      }
+
+      .action-title {
+          color: var(--text-primary);
+          font-weight: 600;
+          margin-bottom: 0.5rem;
+      }
+
+      .action-description {
+          color: var(--text-secondary);
+          font-size: 0.875rem;
+      }
+
+      .contact-section {
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: var(--border-radius);
+          padding: 2rem;
+          text-align: center;
+      }
+
+      .contact-title {
+          color: var(--text-primary);
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin-bottom: 1rem;
+      }
+
+      .contact-description {
+          color: var(--text-secondary);
+          margin-bottom: 2rem;
+      }
+
+      .contact-buttons {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+          flex-wrap: wrap;
+      }
+
+      .contact-btn {
+          background: var(--primary);
+          color: white;
+          border: none;
+          padding: 0.75rem 1.5rem;
+          border-radius: var(--border-radius-sm);
+          font-weight: 600;
+          transition: var(--transition);
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+      }
+
+      .contact-btn:hover {
+          background: var(--primary-dark);
+          color: white;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      .contact-btn i {
+          margin-right: 0.5rem;
+      }
+
+      @media (max-width: 768px) {
+          .help-header {
+              padding: 2rem 1rem;
+          }
+
+          .help-title {
+              font-size: 2rem;
+          }
+
+          .section-header {
+              padding: 1rem;
+          }
+
+          .section-content {
+              padding: 1rem;
+          }
+
+          .actions-grid {
+              grid-template-columns: 1fr;
+          }
+
+          .contact-buttons {
+              flex-direction: column;
+              align-items: center;
+          }
+      }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="help-container" style="margin-top: 20px;">
+
+    <!-- Quick Actions -->
+    {% if user.is_authenticated %}
+      <div class="quick-actions">
+        <div class="quick-actions-title">
+          <i class="fas fa-bolt"></i>
+          Acciones Rápidas
+        </div>
+        <div class="actions-grid">
+          <a href="{% url 'core:project_create' %}" class="action-card">
+            <div class="action-icon">
+              <i class="fas fa-plus"></i>
+            </div>
+            <div class="action-title">Crear Proyecto</div>
+            <div class="action-description">Comienza un nuevo proyecto de medición</div>
+          </a>
+
+          <a href="{% url 'core:gallery' %}" class="action-card">
+            <div class="action-icon">
+              <i class="fas fa-images"></i>
+            </div>
+            <div class="action-title">Ver Galería</div>
+            <div class="action-description">Explora todas tus imágenes</div>
+          </a>
+
+          <a href="{% url 'core:statistics' %}" class="action-card">
+            <div class="action-icon">
+              <i class="fas fa-chart-bar"></i>
+            </div>
+            <div class="action-title">Ver Estadísticas</div>
+            <div class="action-description">Analiza tu actividad</div>
+          </a>
+
+          <a href="{% url 'core:dashboard' %}" class="action-card">
+            <div class="action-icon">
+              <i class="fas fa-tachometer-alt"></i>
+            </div>
+            <div class="action-title">Ir al Dashboard</div>
+            <div class="action-description">Volver al inicio</div>
+          </a>
+        </div>
+      </div>
+    {% endif %}
+
+
+    <!-- Help Sections -->
+    <div class="help-sections">
+      {% for section in help_sections %}
+        <div class="help-section">
+          <div class="section-header" onclick="toggleSection('{{ section.id }}')">
+            <h2 class="section-title">
+              <i class="{{ section.icon }} section-icon"></i>
+              {{ section.title }}
+            </h2>
+            <i class="fas fa-chevron-down section-toggle"></i>
+          </div>
+          <div class="section-content" id="{{ section.id }}">
+            {% for subsection in section.sections %}
+              <div class="subsection">
+                <h3 class="subsection-title">
+                  <i class="fas fa-arrow-right subsection-icon"></i>
+                  {{ subsection.title }}
+                </h3>
+                <div class="subsection-content">
+                  {{ subsection.content }}
+                </div>
+
+                {% if subsection.steps %}
+                  <div class="steps-list">
+                    <h4><i class="fas fa-list-ol me-2"></i>Pasos a seguir:</h4>
+                    <ol>
+                      {% for step in subsection.steps %}
+                        <li>{{ step }}</li>
+                      {% endfor %}
+                    </ol>
+                  </div>
+                {% endif %}
+
+                {% if subsection.tips %}
+                  <div class="tips-list">
+                    <h4><i class="fas fa-lightbulb me-2"></i>Consejos útiles:</h4>
+                    <ul>
+                      {% for tip in subsection.tips %}
+                        <li>{{ tip }}</li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                {% endif %}
+
+                {% if subsection.types %}
+                  <div class="types-list">
+                    <h4><i class="fas fa-info-circle me-2"></i>Tipos disponibles:</h4>
+                    <ul>
+                      {% for type in subsection.types %}
+                        <li>{{ type }}</li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                {% endif %}
+
+                {% if subsection.formats %}
+                  <div class="formats-list">
+                    <h4><i class="fas fa-file-export me-2"></i>Formatos disponibles:</h4>
+                    <ul>
+                      {% for format in subsection.formats %}
+                        <li>{{ format }}</li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                {% endif %}
+
+                {% if subsection.parameters %}
+                  <div class="parameters-list">
+                    <h4><i class="fas fa-cog me-2"></i>Parámetros configurables:</h4>
+                    <ul>
+                      {% for parameter in subsection.parameters %}
+                        <li>{{ parameter }}</li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                {% endif %}
+
+                {% if subsection.problems %}
+                  <div class="problems-list">
+                    <h4><i class="fas fa-exclamation-triangle me-2"></i>Problemas comunes:</h4>
+                    <ul>
+                      {% for problem in subsection.problems %}
+                        <li>{{ problem }}</li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                {% endif %}
+
+                {% if subsection.requirements %}
+                  <div class="requirements-list">
+                    <h4><i class="fas fa-check-circle me-2"></i>Requisitos del sistema:</h4>
+                    <ul>
+                      {% for requirement in subsection.requirements %}
+                        <li>{{ requirement }}</li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    <br>
+
+    <!-- Contact Section -->
+  {% if user.is_authenticated  %}
+    <div class="contact-section">
+      <h2 class="contact-title">¿Necesitas más ayuda?</h2>
+      <p class="contact-description">
+        Si no encuentras la respuesta que buscas, no dudes en contactarnos.
+      </p>
+      <div class="contact-buttons">
+        {% comment %} Prefer opening Gmail web compose if available in context, otherwise fall back to mailto {% endcomment %}
+        {% if gmail_compose_url %}
+          <a href="{{ gmail_compose_url }}" target="_blank" rel="noopener" class="contact-btn">
+            <i class="fas fa-envelope"></i>
+            Enviar Email
+          </a>
+        {% else %}
+          <a href="mailto:{{ support_email|default:'soporte@mediciongeo.com' }}" class="contact-btn">
+            <i class="fas fa-envelope"></i>
+            Enviar Email
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const sections = document.querySelectorAll('.help-section');
+
+      // Toggle sections
+      window.toggleSection = function (sectionId) {
+        const content = document.getElementById(sectionId);
+        const header = content.previousElementSibling;
+        const toggle = header.querySelector('.section-toggle');
+
+        if (content.classList.contains('active')) {
+          content.classList.remove('active');
+          toggle.style.transform = 'rotate(0deg)';
+        } else {
+          // Close all other sections
+          document.querySelectorAll('.section-content.active').forEach(activeContent => {
+            activeContent.classList.remove('active');
+            activeContent.previousElementSibling.querySelector('.section-toggle').style.transform = 'rotate(0deg)';
+          });
+
+          content.classList.add('active');
+          toggle.style.transform = 'rotate(180deg)';
+        }
+      };
+
+      // Highlight search text
+      function highlightText(element, searchTerm) {
+        if (!searchTerm) return;
+
+        const walker = document.createTreeWalker(
+          element,
+          NodeFilter.SHOW_TEXT,
+          null,
+          false
+        );
+
+        const textNodes = [];
+        let node;
+
+        while (node = walker.nextNode()) {
+          textNodes.push(node);
+        }
+
+        textNodes.forEach(textNode => {
+          const text = textNode.textContent;
+          const regex = new RegExp(`(${searchTerm})`, 'gi');
+          const highlightedText = text.replace(regex, '<mark>$1</mark>');
+
+          if (highlightedText !== text) {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = highlightedText;
+            textNode.parentNode.replaceChild(wrapper, textNode);
+          }
+        });
+      }
+
+      // Add click effects to action cards
+      const actionCards = document.querySelectorAll('.action-card');
+      actionCards.forEach(card => {
+        card.addEventListener('click', function (e) {
+          // Add ripple effect
+          const ripple = document.createElement('div');
+          ripple.style.position = 'absolute';
+          ripple.style.borderRadius = '50%';
+          ripple.style.background = 'rgba(255, 255, 255, 0.6)';
+          ripple.style.transform = 'scale(0)';
+          ripple.style.animation = 'ripple 0.6s linear';
+          ripple.style.left = e.offsetX + 'px';
+          ripple.style.top = e.offsetY + 'px';
+          ripple.style.width = '20px';
+          ripple.style.height = '20px';
+
+          this.style.position = 'relative';
+          this.appendChild(ripple);
+
+          setTimeout(() => {
+            ripple.remove();
+          }, 600);
+        });
+      });
+
+      // Add animation to sections
+      const helpSections = document.querySelectorAll('.help-section');
+      helpSections.forEach((section, index) => {
+        section.style.animationDelay = `${index * 0.1}s`;
+        section.classList.add('fade-in-up');
+      });
+    });
+
+    // Add CSS for ripple effect
+    const style = document.createElement('style');
+    style.textContent = `
+    @keyframes ripple {
+        to {
+            transform: scale(4);
+            opacity: 0;
+        }
+    }
+
+    mark {
+        background: linear-gradient(135deg, #fef5e7 0%, #fed7aa 100%);
+        color: #744210;
+        padding: 0.1rem 0.2rem;
+        border-radius: 3px;
+        font-weight: 600;
+    }
+
+    [data-bs-theme="dark"] mark {
+        background: linear-gradient(135deg, #4a2c17 0%, #5a3a1a 100%);
+        color: #f6ad55;
+    }
+`;
+    document.head.appendChild(style);
+  </script>
+{% endblock %}

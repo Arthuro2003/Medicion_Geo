@@ -1,0 +1,306 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Mis Proyectos - MediciónGeo{% endblock %}
+
+{% block extra_css %}
+<style>
+  .project-card {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 1px solid #2d3748;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
+  
+  .project-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    border-color: #4a5568;
+  }
+  
+  .project-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 1.5rem;
+    color: white;
+  }
+  
+  .project-body {
+    padding: 1.5rem;
+    background: #1a202c;
+  }
+  
+  .project-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1rem;
+  }
+  
+  .stat-item {
+    text-align: center;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    flex: 1;
+    margin: 0 0.25rem;
+  }
+  
+  .stat-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #667eea;
+  }
+  
+  .stat-label {
+    font-size: 0.875rem;
+    color: #a0aec0;
+  }
+  
+  .btn-primary-custom {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    color: white;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-primary-custom:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+  }
+  
+  .btn-outline-custom {
+    border: 2px solid #667eea;
+    color: #667eea;
+    background: transparent;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-outline-custom:hover {
+    background: #667eea;
+    color: white;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #a0aec0;
+  }
+  
+  .empty-state i {
+    font-size: 4rem;
+    color: #4a5568;
+    margin-bottom: 1rem;
+  }
+  
+  .search-bar {
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: white;
+    width: 100%;
+  }
+  
+  .search-bar:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+  
+  .filter-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .filter-btn {
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    color: #a0aec0;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+  }
+  
+  .filter-btn.active {
+    background: #667eea;
+    border-color: #667eea;
+    color: white;
+  }
+  
+  .filter-btn:hover {
+    background: #4a5568;
+    color: white;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <!-- Header Section -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="text-white mb-2">
+            <i class="fas fa-folder-open me-2"></i>
+            Mis Proyectos
+          </h1>
+          <p class="text-muted">Gestiona y organiza tus proyectos de medición</p>
+        </div>
+        <a href="{% url 'core:project_create' %}" class="btn btn-primary-custom">
+          <i class="fas fa-plus me-2"></i>
+          Nuevo Proyecto
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search and Filters -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <input type="text" class="search-bar" placeholder="Buscar proyectos..." id="searchInput">
+    </div>
+    <div class="col-md-4">
+      <div class="filter-buttons">
+        <button class="filter-btn active" data-filter="all">Todos</button>
+        <button class="filter-btn" data-filter="active">Activos</button>
+        <button class="filter-btn" data-filter="recent">Recientes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Projects Grid -->
+  <div class="row" id="projectsGrid">
+    {% if projects %}
+      {% for project in projects %}
+      <div class="col-lg-4 col-md-6 mb-4 project-item" data-status="{% if project.is_active %}active{% else %}inactive{% endif %}">
+        <div class="project-card h-100">
+          <div class="project-header">
+            <div class="d-flex justify-content-between align-items-start">
+              <h5 class="mb-2">{{ project.name }}</h5>
+              <div class="dropdown">
+                <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="dropdown">
+                  <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark">
+                  <li><a class="dropdown-item" href="{% url 'core:project_detail' project.pk %}">
+                    <i class="fas fa-eye me-2"></i>Ver Detalles
+                  </a></li>
+                  <li><a class="dropdown-item" href="{% url 'core:project_edit' project.pk %}">
+                    <i class="fas fa-edit me-2"></i>Editar
+                  </a></li>
+                  
+                  <li><hr class="dropdown-divider"></li>
+                  <li><a class="dropdown-item text-danger" href="{% url 'core:project_delete' project.pk %}">
+                    <i class="fas fa-trash me-2"></i>Eliminar
+                  </a></li>
+                </ul>
+              </div>
+            </div>
+            <p class="mb-0 text-light">{{ project.description|truncatechars:100 }}</p>
+          </div>
+          
+          <div class="project-body">
+            <div class="project-stats">
+              <div class="stat-item">
+                <div class="stat-number">{{ project.images_count }}</div>
+                <div class="stat-label">Imágenes</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-number">{{ project.measurement_count }}</div>
+                <div class="stat-label">Mediciones</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-number">{{ project.shapes_count }}</div>
+                <div class="stat-label">Formas</div>
+              </div>
+            </div>
+            
+            <div class="mt-3">
+              <small class="text-muted">
+                <i class="fas fa-calendar me-1"></i>
+                Creado: {{ project.created_at|date:"d/m/Y" }}
+              </small>
+            </div>
+            
+            <div class="mt-3 d-flex gap-2">
+              <a href="{% url 'core:project_detail' project.pk %}" class="btn btn-primary-custom btn-sm flex-fill">
+                <i class="fas fa-eye me-1"></i>
+                Ver Proyecto
+              </a>
+              
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="col-12">
+        <div class="empty-state">
+          <i class="fas fa-folder-open"></i>
+          <h3 class="text-white mb-3">No tienes proyectos aún</h3>
+          <p class="mb-4">Comienza creando tu primer proyecto de medición</p>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Search functionality
+  const searchInput = document.getElementById('searchInput');
+  const projectItems = document.querySelectorAll('.project-item');
+  
+  searchInput.addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    
+    projectItems.forEach(item => {
+      const projectName = item.querySelector('h5').textContent.toLowerCase();
+      const projectDesc = item.querySelector('p').textContent.toLowerCase();
+      
+      if (projectName.includes(searchTerm) || projectDesc.includes(searchTerm)) {
+        item.style.display = 'block';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  });
+  
+  // Filter functionality
+  const filterButtons = document.querySelectorAll('.filter-btn');
+  
+  filterButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // Remove active class from all buttons
+      filterButtons.forEach(btn => btn.classList.remove('active'));
+      // Add active class to clicked button
+      this.classList.add('active');
+      
+      const filter = this.dataset.filter;
+      
+      projectItems.forEach(item => {
+        if (filter === 'all') {
+          item.style.display = 'block';
+        } else if (filter === 'active') {
+          item.style.display = item.dataset.status === 'active' ? 'block' : 'none';
+        } else if (filter === 'recent') {
+          // Show projects from last 30 days
+          const createdDate = new Date(item.querySelector('small').textContent.split('Creado: ')[1]);
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          
+          item.style.display = createdDate >= thirtyDaysAgo ? 'block' : 'none';
+        }
+      });
+    });
+  });
+});
+</script>
+{% endblock %}

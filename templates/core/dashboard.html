@@ -1,0 +1,598 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - MediciónGeo{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        text-align: center;
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--gradient-primary);
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px var(--shadow-hover);
+    }
+    
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 1.5rem;
+        color: white;
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.875rem;
+    }
+    
+    .stat-change {
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-top: 0.5rem;
+    }
+    
+    .stat-change.positive {
+        color: var(--success);
+    }
+    
+    .stat-change.negative {
+        color: var(--danger);
+    }
+    
+    .recent-projects {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .recent-projects h3 {
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        font-weight: 700;
+    }
+    
+    .project-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        background: var(--bg-tertiary);
+        border-radius: var(--border-radius-sm);
+        margin-bottom: 1rem;
+        transition: var(--transition);
+        border: 1px solid transparent;
+    }
+    
+    .project-item:hover {
+        background: var(--bg-secondary);
+        border-color: var(--primary);
+        transform: translateX(4px);
+    }
+    
+    .project-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        color: white;
+        font-size: 1.2rem;
+    }
+    
+    .project-info {
+        flex: 1;
+    }
+    
+    .project-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+    
+    .project-meta {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+    
+    .project-stats {
+        display: flex;
+        gap: 1rem;
+        color: var(--text-muted);
+        font-size: 0.875rem;
+    }
+    
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .action-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        text-align: center;
+        transition: var(--transition);
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .action-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px var(--shadow-hover);
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .action-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        color: white;
+        font-size: 1.2rem;
+    }
+    
+    .action-title {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+    
+    .action-description {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+    
+    .welcome-section {
+        background: var(--gradient-primary);
+        color: white;
+        border-radius: var(--border-radius);
+        padding: 3rem 2rem;
+        text-align: center;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .welcome-section::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-20px) rotate(180deg); }
+    }
+    
+    .welcome-content {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .welcome-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+    
+    .welcome-subtitle {
+        font-size: 1.2rem;
+        opacity: 0.9;
+        margin-bottom: 2rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-muted);
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state h3 {
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state p {
+        margin-bottom: 2rem;
+    }
+    
+    .chart-container {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .chart-title {
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        font-weight: 700;
+    }
+    
+    .chart-placeholder {
+        height: 300px;
+        background: var(--bg-tertiary);
+        border-radius: var(--border-radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        font-style: italic;
+    }
+    
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .quick-actions {
+            grid-template-columns: 1fr;
+        }
+        
+        .welcome-title {
+            font-size: 2rem;
+        }
+        
+        .welcome-subtitle {
+            font-size: 1rem;
+        }
+        
+        .project-item {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .project-icon {
+            margin-right: 0;
+            margin-bottom: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Welcome Section -->
+<div class="welcome-section">
+    <div class="welcome-content">
+        <h1 class="welcome-title">¡Bienvenido a MediciónGeo!</h1>
+        <p class="welcome-subtitle">Sistema profesional de medición y análisis geométrico mediante visión por computadora</p>
+        <a href="{% url 'core:project_create' %}" class="btn btn-light btn-lg">
+            <i class="fas fa-plus me-2"></i>
+            Crear Primer Proyecto
+        </a>
+    </div>
+</div>
+
+<!-- Statistics Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-folder-open"></i>
+        </div>
+        <div class="stat-number">{{ total_projects|default:0 }}</div>
+        <div class="stat-label">Proyectos Totales</div>
+        <div class="stat-change positive">
+            <i class="fas fa-arrow-up me-1"></i>
+            +{{ new_projects_this_month|default:0 }} este mes
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-images"></i>
+        </div>
+        <div class="stat-number">{{ total_images|default:0 }}</div>
+        <div class="stat-label">Imágenes Procesadas</div>
+        <div class="stat-change positive">
+            <i class="fas fa-arrow-up me-1"></i>
+            +{{ new_images_this_week|default:0 }} esta semana
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-ruler"></i>
+        </div>
+        <div class="stat-number">{{ total_measurements|default:0 }}</div>
+        <div class="stat-label">Mediciones Realizadas</div>
+        <div class="stat-change positive">
+            <i class="fas fa-arrow-up me-1"></i>
+            +{{ new_measurements_today|default:0 }} hoy
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-shapes"></i>
+        </div>
+        <div class="stat-number">{{ total_shapes|default:0 }}</div>
+        <div class="stat-label">Formas Detectadas</div>
+        <div class="stat-change positive">
+            <i class="fas fa-arrow-up me-1"></i>
+            +{{ new_shapes_this_week|default:0 }} esta semana
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="quick-actions">
+    <a href="{% url 'core:project_create' %}" class="action-card">
+        <div class="action-icon">
+            <i class="fas fa-plus"></i>
+        </div>
+        <div class="action-title">Nuevo Proyecto</div>
+        <div class="action-description">Crea un nuevo proyecto de medición</div>
+    </a>
+    
+    <a href="{% url 'core:project_list' %}" class="action-card">
+        <div class="action-icon">
+            <i class="fas fa-folder-open"></i>
+        </div>
+        <div class="action-title">Mis Proyectos</div>
+        <div class="action-description">Gestiona tus proyectos existentes</div>
+    </a>
+    
+    <a href="#" class="action-card" onclick="showVideoModal()">
+        <div class="action-icon">
+            <i class="fas fa-video"></i>
+        </div>
+        <div class="action-title">Video en Tiempo Real</div>
+        <div class="action-description">Medición con cámara en vivo</div>
+    </a>
+    
+    <a href="#" class="action-card">
+        <div class="action-icon">
+            <i class="fas fa-upload"></i>
+        </div>
+        <div class="action-title">Subir Imágenes</div>
+        <div class="action-description">Carga imágenes para procesar</div>
+    </a>
+    
+    <a href="#" class="action-card">
+        <div class="action-icon">
+            <i class="fas fa-chart-line"></i>
+        </div>
+        <div class="action-title">Ver Estadísticas</div>
+        <div class="action-description">Analiza el rendimiento del sistema</div>
+    </a>
+</div>
+
+<!-- Recent Projects -->
+<div class="recent-projects">
+    <h3><i class="fas fa-clock me-2"></i>Proyectos Recientes</h3>
+    {% if recent_projects %}
+        {% for project in recent_projects %}
+        <div class="project-item">
+            <div class="project-icon">
+                <i class="fas fa-folder"></i>
+            </div>
+            <div class="project-info">
+                <div class="project-name">{{ project.name }}</div>
+                <div class="project-meta">{{ project.description|truncatechars:60 }}</div>
+                <div class="project-stats">
+                    <span><i class="fas fa-images me-1"></i>{{ project.total_images }} imágenes</span>
+                    <span><i class="fas fa-ruler me-1"></i>{{ project.total_measurements }} mediciones</span>
+                    <span><i class="fas fa-calendar me-1"></i>{{ project.created_at|date:"d/m/Y" }}</span>
+                </div>
+            </div>
+            <div class="ms-auto d-flex gap-2">
+                <a href="{% url 'core:project_detail' project.pk %}" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-eye"></i>
+                </a>
+                <a href="{% url 'core:video_dashboard' project.pk %}" class="btn btn-outline-success btn-sm" title="Video en Tiempo Real">
+                    <i class="fas fa-video"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <div class="text-center mt-3">
+            <a href="{% url 'core:project_list' %}" class="btn btn-primary">
+                <i class="fas fa-list me-2"></i>
+                Ver Todos los Proyectos
+            </a>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-folder-open"></i>
+            <h3>No tienes proyectos aún</h3>
+            <p>Comienza creando tu primer proyecto de medición</p>
+            <a href="{% url 'core:project_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>
+                Crear Primer Proyecto
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Charts Section -->
+<div class="row">
+    <div class="col-lg-6">
+        <div class="chart-container">
+            <h4 class="chart-title"><i class="fas fa-chart-bar me-2"></i>Actividad Reciente</h4>
+            <div class="chart-placeholder">
+                <div class="text-center">
+                    <i class="fas fa-chart-line fa-3x mb-3"></i>
+                    <p>Gráfico de actividad en desarrollo</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="chart-container">
+            <h4 class="chart-title"><i class="fas fa-pie-chart me-2"></i>Distribución de Proyectos</h4>
+            <div class="chart-placeholder">
+                <div class="text-center">
+                    <i class="fas fa-chart-pie fa-3x mb-3"></i>
+                    <p>Gráfico de distribución en desarrollo</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Video Project Selection Modal -->
+<div class="modal fade" id="videoProjectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-video me-2"></i>Seleccionar Proyecto para Video
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">Selecciona un proyecto para iniciar una sesión de video en tiempo real:</p>
+                {% if recent_projects %}
+                    <div class="list-group">
+                        {% for project in recent_projects %}
+                        <a href="{% url 'core:video_dashboard' project.pk %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ project.name }}</h6>
+                                <small>{{ project.created_at|date:"d/m/Y" }}</small>
+                            </div>
+                            <p class="mb-1">{{ project.description|truncatechars:60 }}</p>
+                            <small>
+                                <i class="fas fa-images me-1"></i>{{ project.total_images }} imágenes
+                                <i class="fas fa-ruler me-1 ms-2"></i>{{ project.total_measurements }} mediciones
+                            </small>
+                        </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No tienes proyectos</h5>
+                        <p class="text-muted">Crea un proyecto primero para usar video en tiempo real.</p>
+                        <a href="{% url 'core:project_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Crear Proyecto
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                {% if recent_projects %}
+                <a href="{% url 'core:project_list' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-list me-2"></i>Ver Todos los Proyectos
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add animation to stat cards
+    const statCards = document.querySelectorAll('.stat-card');
+    statCards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+        card.classList.add('fade-in-up');
+    });
+    
+    // Add animation to action cards
+    const actionCards = document.querySelectorAll('.action-card');
+    actionCards.forEach((card, index) => {
+        card.style.animationDelay = `${(index + statCards.length) * 0.1}s`;
+        card.classList.add('fade-in-up');
+    });
+    
+    // Add hover effects to project items
+    const projectItems = document.querySelectorAll('.project-item');
+    projectItems.forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateX(8px)';
+        });
+        
+        item.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateX(0)';
+        });
+    });
+    
+    // Auto-refresh stats every 30 seconds
+    setInterval(function() {
+        // This would typically make an AJAX call to refresh stats
+        console.log('Refreshing stats...');
+    }, 30000);
+});
+
+// Video modal function
+function showVideoModal() {
+    const modal = new bootstrap.Modal(document.getElementById('videoProjectModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

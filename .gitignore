@@ -1,0 +1,9 @@
+.venv2/
+
+.idea
+media
+static
+migrations/
+__pycache__/
+*.pyc
+tools/

@@ -1,0 +1,1241 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Video en Tiempo Real - {{ video_session.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .video-container {
+    position: relative;
+    background: #000; /* keep video area dark by default */
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px var(--shadow);
+  }
+  
+  .video-stream {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  
+  .video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+  
+  .measurement-point {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: var(--success);
+    border: 2px solid var(--bg-primary);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 20;
+  }
+  
+  .measurement-line {
+    position: absolute;
+    background: var(--success);
+    height: 2px;
+    transform-origin: left center;
+    pointer-events: none;
+    z-index: 15;
+  }
+  
+  .measurement-text {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.7);
+    color: var(--success);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 25;
+  }
+  
+  .control-panel {
+    background: var(--bg-primary);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px var(--shadow);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+  }
+  
+  .measurement-item {
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid var(--primary);
+    color: var(--text-primary);
+  }
+  
+  .status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    border: 1px solid var(--border-color);
+  }
+  
+  .status-active {
+    background: var(--success);
+    animation: pulse 2s infinite;
+  }
+
+  .status-inactive {
+    background: var(--danger);
+  }
+  
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+  
+  .btn-measurement {
+    min-width: 120px;
+  }
+  
+  .calibration-panel {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+  }
+
+  /* Dark-mode fallback for measurement visuals to ensure visibility */
+  @media (prefers-color-scheme: dark) {
+    .measurement-point { border: 2px solid #0f0f23; }
+    .measurement-text { background: rgba(10,10,20,0.8); color: #9ae6b4; }
+    .measurement-line { background: #9ae6b4; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <!-- Video Stream Column -->
+    <div class="col-lg-8">
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h1 class="h4 mb-1">{{ video_session.name }}</h1>
+          <p class="text-muted mb-0">
+            <span class="status-indicator status-active"></span>
+            Sesión Activa
+          </p>
+        </div>
+        <div>
+          <a href="{% url 'core:video_dashboard' project.pk %}" class="btn btn-outline-secondary me-2">
+            <i class="fas fa-arrow-left"></i> Volver
+          </a>
+          <a href="{% url 'core:stop_video_session' project.pk video_session.pk %}" class="btn btn-danger">
+            <i class="fas fa-stop"></i> Terminar Sesión
+          </a>
+        </div>
+      </div>
+
+      <!-- Single Camera Video Container -->
+      <div class="video-container" id="videoContainer">
+        <img src="{% url 'core:video_feed' project.pk video_session.pk %}" 
+             class="video-stream" 
+             id="videoStream"
+             alt="Video Stream">
+          
+        <!-- Overlay for measurements -->
+        <div class="video-overlay" id="videoOverlay"></div>
+      </div>
+
+      <!-- Video Controls -->
+      <div class="row mt-3">
+        <div class="col-12">Mediciones
+          <div class="control-panel">
+            <div class="row">
+              <div class="col-md-6">
+                
+                <div class="d-flex align-items-center mb-3">
+                  <div class="status-indicator me-2" id="detectionStatus"></div>
+                  <span id="detectionText">Detección automática activa</span>
+                </div>
+                <div class="d-grid gap-2">
+                  <button type="button" class="btn btn-warning" onclick="resetDetection()">
+                    <i class="fas fa-redo"></i> Reiniciar Detección
+                  </button>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <h6 class="mb-3">
+                  <i class="fa-solid fa-qrcode me-2"></i>Confirmar calibración
+                </h6>
+                <div id="confirmCalibrationContainer" style="display: none; margin-top: 8px;">
+                  <button id="confirmCalibrationBtn" class="btn btn-success btn-sm">Confirmar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Control Panel Column -->
+    <div class="col-lg-4">
+      <!-- Session Info -->
+      <div class="control-panel mb-4">
+        <h5 class="mb-3">
+          <i class="fas fa-info-circle me-2"></i>Información de la Sesión
+        </h5>
+        <div class="row">
+          <div class="col-6">
+            <small class="text-muted">Duración:</small>
+            <div id="sessionDuration">00:00:00</div>
+          </div>
+          <div class="col-6">
+            <small class="text-muted">Medidas:</small>
+            <div id="measurementCount">0</div>
+          </div>
+        </div>
+        <div class="mt-2">
+          <small class="text-muted">Estado de Calibración:</small>
+          <div>
+            {% if video_session.is_calibrated %}
+              <span class="badge bg-success">
+                <i class="fas fa-check"></i> Calibrada
+              </span>
+            {% else %}
+              <span class="badge bg-warning">
+                <i class="fas fa-exclamation-triangle"></i> Sin Calibrar
+              </span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Calibration Status Panel -->
+      {% if not video_session.is_calibrated %}
+      <div class="calibration-panel mb-4">
+        <h6 class="mb-2">
+          <i class="fas fa-compass me-2"></i>Estado de Calibración
+        </h6>
+        <p class="small mb-2">La calibración se realizará automáticamente al detectar un marcador ArUco de 5x5 cm.</p>
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Esperando la detección del marcador ArUco...
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Current Measurement -->
+      <div class="control-panel mb-4" id="currentMeasurementPanel" style="display: none;">
+        <h6 class="mb-3">
+          <i class="fas fa-ruler me-2"></i>Medición Actual
+        </h6>
+        <div id="currentMeasurement">
+          <p class="text-muted">Haz clic en dos puntos del video para medir</p>
+        </div>
+        <div class="mt-3">
+          <button type="button" class="btn btn-success btn-sm" onclick="saveMeasurement()">
+            <i class="fas fa-save"></i> Guardar Medición
+          </button>
+        </div>
+      </div>
+
+      <!-- Recent Measurements -->
+      <div class="control-panel">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="mb-0">
+            <i class="fa-solid fa-object-ungroup me-2"></i>Objetos Detectados
+          </h6>
+          <div class="d-flex align-items-center">
+            <div class="object-counter me-3">
+              <div class="circle-counter">
+                <span id="objectCount">0</span>
+              </div>
+            </div>
+            <button id="saveAllMeasurements" class="btn btn-success btn-sm" style="display: none;" {% if not video_session.is_calibrated %}disabled title="Confirma calibración para habilitar"{% endif %}>
+              <i class="fas fa-save"></i> Datos
+            </button>
+          </div>
+        </div>
+        <div id="recentMeasurements" class="measurement-cards">
+          <!-- Cards will be added here dynamically -->
+          <p class="text-muted small text-center">No hay objetos detectados</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .circle-counter {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1.2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+
+  .measurement-cards {
+    max-height: 500px;
+    overflow-y: auto;
+  }
+
+  .object-card {
+    border-left: 4px solid var(--primary);
+    margin-bottom: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 1rem;
+    position: relative;
+  }
+
+  .object-card.circle {
+    border-left-color: #28a745;
+  }
+
+  .object-card.triangle {
+    border-left-color: #ffc107;
+  }
+
+  .object-card.rectangle {
+    border-left-color: #17a2b8;
+  }
+
+  .object-card .object-number {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.75rem; /* moved to left to avoid overlapping the badge */
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  /* ensure badge stays at the top-right without affecting layout */
+  .object-card .badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 5;
+  }
+
+  .measurement-value {
+    margin-bottom: 0.3rem;
+  }
+</style>
+
+<!-- Auto Calibration information will appear in the instructions overlay -->
+
+<!-- Auto Calibration Modal -->
+<div class="modal fade" id="autoCalibrationModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-hand-paper me-2"></i>Calibración Automática con Dedos
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning">
+          <i class="fas fa-hand-paper me-2"></i>
+          <strong>Instrucciones:</strong>
+          <ol class="mb-0 mt-2">
+            <li>Extiende tu pulgar e índice lo más separados posible</li>
+            <li>Mantén la mano frente a la cámara</li>
+            <li>Ingresa la distancia real entre tus dedos</li>
+            <li>Haz clic en "Calibrar"</li>
+          </ol>
+        </div>
+        <form id="autoCalibrationForm">
+          <div class="mb-3">
+            <label class="form-label">Distancia entre dedos (cm)</label>
+            <input type="number" class="form-control" id="fingerDistance" step="0.1" min="1" max="30" required>
+            <div class="form-text">Mide la distancia entre la punta de tu pulgar e índice</div>
+          </div>
+        </form>
+        <div id="autoCalibrationStatus" class="mt-3" style="display: none;">
+          <div class="alert alert-info">
+            <i class="fas fa-spinner fa-spin me-2"></i>
+            Detectando dedos... Mantén tu mano frente a la cámara.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-warning" onclick="autoCalibrateWithFingers()">
+          <i class="fas fa-hand-paper"></i> Calibrar con Dedos
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let sessionStartTime = new Date();
+  let measurementCount = 0;
+  let showCalibrationPoints = false;
+  let lastMeasurements = [];
+  let gestureModeEnabled = false;  // Inicialización de la variable faltante
+  let arucoDetected = false;  // Estado de detección del ArUco
+  const STATUS = {
+    WAITING_ARUCO: 'waiting',
+    DETECTED: 'detected', // marker visible but session not persisted as calibrated
+    CALIBRATED: 'calibrated',
+    DETECTING: 'detecting'
+  };
+  let currentStatus = STATUS.WAITING_ARUCO;
+
+  document.addEventListener('DOMContentLoaded', function() {
+    startSessionTimer();
+    loadRecentMeasurements();
+    updateStatusIndicator();
+    startAutoCloseTimer();
+
+    // Start polling for ArUco detection status
+    setInterval(checkArucoStatus, 1000);
+  });
+
+  function updateStatusIndicator() {
+    const indicator = document.getElementById('detectionStatus');
+    const text = document.getElementById('detectionText');
+    
+    switch(currentStatus) {
+      case STATUS.WAITING_ARUCO:
+        indicator.style.backgroundColor = '#ffc107';
+        text.textContent = 'Esperando marcador ArUco';
+        break;
+      case STATUS.DETECTED:
+        indicator.style.backgroundColor = '#28a745';
+        text.textContent = 'Marcador ArUco detectado (no guardado)';
+        break;
+      case STATUS.CALIBRATED:
+        indicator.style.backgroundColor = '#28a745';
+        text.textContent = 'Sistema calibrado';
+        handleArucoDetection(true);  // Update ArUco detection status
+        break;
+      case STATUS.DETECTING:
+        indicator.style.backgroundColor = '#17a2b8';
+        text.textContent = 'Detectando objetos...';
+        break;
+    }
+  }
+
+  function checkArucoStatus() {
+    fetch(`{% url 'core:check_aruco_status' project.pk video_session.pk %}`)
+    .then(response => response.json())
+    .then(data => {
+      // Buscar elementos de la UI
+      const arucoStatusElem = document.getElementById('arucoStatus');
+      const detectionText = document.getElementById('detectionText');
+      const statusBadge = document.querySelector('.badge');
+      const calibrationPanel = document.querySelector('.calibration-panel');
+      
+      // Actualizar el estado global
+      arucoDetected = !!data.aruco_detected;
+
+      // Determine UI status using server-provided status and calibration flag
+      if (data.is_calibrated) {
+        currentStatus = STATUS.CALIBRATED;
+      } else if (data.status === 'detected' || data.aruco_detected) {
+        // Marker is visible in the video but the session may not be saved as calibrated in DB
+        currentStatus = STATUS.DETECTED;
+      } else {
+        currentStatus = STATUS.WAITING_ARUCO;
+      }
+
+      // Update UI based on determined status
+  const confirmContainer = document.getElementById('confirmCalibrationContainer');
+  if (currentStatus === STATUS.CALIBRATED || currentStatus === STATUS.DETECTED) {
+        
+        // Actualizar el estado de ArUco
+        if (arucoStatusElem) {
+          arucoStatusElem.className = 'alert alert-success';
+          arucoStatusElem.innerHTML = '<i class="fas fa-check-circle me-2"></i>Marcador ArUco detectado - Sistema calibrado';
+        }
+        
+        // Actualizar la insignia de calibración
+        if (statusBadge) {
+          statusBadge.className = 'badge bg-success';
+          statusBadge.innerHTML = '<i class="fas fa-check"></i> Calibrado';
+        }
+        
+        // Actualizar el texto de detección
+        if (detectionText) {
+          detectionText.textContent = 'Sistema calibrado y midiendo';
+        }
+        
+        // Actualizar el panel de calibración
+        if (calibrationPanel) {
+          const alertElement = calibrationPanel.querySelector('.alert');
+          if (alertElement) {
+            alertElement.className = 'alert alert-success';
+            alertElement.innerHTML = '<i class="fas fa-check-circle me-2"></i>Sistema calibrado correctamente';
+          }
+        }
+        
+  // Manejar la detección del ArUco (detiene auto-close y muestra notificación)
+  handleArucoDetection(true);
+        
+        // Si hay mediciones, actualizar la lista
+        if (data.has_measurements) {
+          loadRecentMeasurements();
+        }
+        // Mostrar botón de confirmar sólo si está detectado y no persistido
+        if (confirmContainer) {
+          if (!data.is_calibrated && (data.status === 'detected' || data.aruco_detected)) {
+            confirmContainer.style.display = 'block';
+          } else {
+            confirmContainer.style.display = 'none';
+          }
+        }
+        // If backend reports calibration was lost recently, notify and force UI update
+        if (data.calibration_lost) {
+          showNotification('Calibración perdida: el marcador ArUco no se detectó durante varios segundos. La sesión ha sido descalibrada.', 'warning');
+          // reflect immediately
+          currentStatus = STATUS.WAITING_ARUCO;
+          if (confirmContainer) confirmContainer.style.display = 'none';
+        }
+      } else {
+        // ArUco no detectado y sistema no calibrado
+        if (arucoStatusElem) {
+          arucoStatusElem.className = 'alert alert-warning';
+          arucoStatusElem.innerHTML = '<i class="fas fa-search me-2"></i>Buscando marcador ArUco...';
+        }
+        
+        if (statusBadge) {
+          statusBadge.className = 'badge bg-warning';
+          statusBadge.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Sin Calibrar';
+        }
+        
+        if (detectionText) {
+          detectionText.textContent = 'Esperando marcador ArUco';
+        }
+      }
+      
+      // Actualizar todos los indicadores visuales
+      updateStatusIndicator();
+    })
+    .catch(error => {
+      console.error('Error checking ArUco status:', error);
+      // Mostrar notificación de error si es necesario
+      showNotification('Error al verificar el estado del ArUco', 'error');
+    });
+  }
+
+  function resetDetection() {
+    fetch(`{% url 'core:clear_video_measurements' project.pk video_session.pk %}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showNotification('Sistema reiniciado correctamente', 'success');
+        lastMeasurements = [];
+        loadRecentMeasurements();
+      }
+    })
+    .catch(error => {
+      console.error('Error resetting detection:', error);
+      showNotification('Error al reiniciar el sistema', 'error');
+    });
+  }
+
+  // Auto-close session after 2 minutes if no ArUco marker is detected
+  let autoCloseTimer;
+
+  function startAutoCloseTimer() {
+    autoCloseTimer = setTimeout(() => {
+      if (!arucoDetected) {
+        showNotification('No se detectó el marcador ArUco en 2 minutos. La sesión se cerrará.', 'warning');
+        // Redirect to stop session
+        window.location.href = `{% url 'core:stop_video_session' project.pk video_session.pk %}`;
+      }
+    }, 120000); // 2 minutes
+  }
+
+  function handleArucoDetection(detected) {
+    if (detected && !arucoDetected) {
+      arucoDetected = true;
+      if (autoCloseTimer) {
+        clearTimeout(autoCloseTimer);
+      }
+      showNotification('Marcador ArUco detectado (temporal).', 'success');
+      // Update calibration panel safely if present
+      const calPanel = document.querySelector('.calibration-panel');
+      if (calPanel) {
+        const alertEl = calPanel.querySelector('.alert');
+        if (alertEl) {
+          alertEl.classList.remove('alert-warning');
+          alertEl.classList.add('alert-success');
+          alertEl.innerHTML = '<i class="fas fa-check-circle me-2"></i>Marcador ArUco detectado - Sistema calibrado (temporal)';
+        }
+      }
+    }
+  }
+
+  // Confirm calibration handler
+  function confirmCalibration() {
+    fetch(`{% url 'core:confirm_calibration' project.pk video_session.pk %}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(resp => resp.json())
+    .then(data => {
+      if (data.success) {
+        showNotification('Calibración confirmada y guardada', 'success');
+        // Force UI refresh
+        setTimeout(() => checkArucoStatus(), 300);
+        // hide confirm button
+        const confirmContainer = document.getElementById('confirmCalibrationContainer');
+        if (confirmContainer) confirmContainer.style.display = 'none';
+      } else {
+        showNotification('No se pudo confirmar la calibración: ' + (data.message || data.error || 'Error desconocido'), 'error');
+      }
+    })
+    .catch(err => {
+      console.error('Error confirming calibration', err);
+      showNotification('Error al confirmar calibración', 'error');
+    });
+  }
+
+  document.addEventListener('click', function(e) {
+    if (e.target && e.target.id === 'confirmCalibrationBtn') {
+      confirmCalibration();
+    }
+  });
+
+  function calibrationModalIsOpen() {
+    return document.getElementById('calibrationModal').classList.contains('show');
+  }
+
+  // Removed three-point calibration functions as calibration is now automatic with ArUco markers
+
+  function startMeasurement() {
+    isMeasuring = true;
+    measurementPoints = [];
+    clearMeasurementOverlay();
+    document.getElementById('currentMeasurementPanel').style.display = 'block';
+    document.getElementById('currentMeasurement').innerHTML = '<p class="text-muted">Haz clic en dos puntos del video para medir</p>';
+  }
+
+  function addMeasurementPoint(displayX, displayY, pxX, pxY) {
+    if (measurementPoints.length < 2) {
+      measurementPoints.push({x: displayX, y: displayY, px_x: pxX, px_y: pxY});
+      addPointToOverlay(displayX, displayY, measurementPoints.length);
+      if (measurementPoints.length === 2) {
+        // Send pixel coordinates to backend for accurate measurement
+        const p1 = {x: measurementPoints[0].px_x, y: measurementPoints[0].px_y};
+        const p2 = {x: measurementPoints[1].px_x, y: measurementPoints[1].px_y};
+        getCalibratedDistance(p1, p2).then(realVal => {
+          addLineToOverlay({x: measurementPoints[0].x, y: measurementPoints[0].y}, {x: measurementPoints[1].x, y: measurementPoints[1].y});
+          addDistanceText({x: measurementPoints[0].x, y: measurementPoints[0].y}, {x: measurementPoints[1].x, y: measurementPoints[1].y}, realVal);
+          document.getElementById('currentMeasurement').innerHTML = `
+            <div class="measurement-item">
+              <strong>Distancia:</strong> ${realVal ? realVal : 'No calibrado'}
+            </div>
+          `;
+          loadRecentMeasurements();
+        });
+      }
+    }
+  }
+
+  function calculateDistance(p1, p2) {
+    return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+  }
+
+  async function getCalibratedDistance(p1, p2) {
+    // Llama al backend para obtener la distancia calibrada en cm
+    try {
+      const resp = await fetch(`{% url 'core:video_click' project.pk video_session.pk %}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+          x: p1.x,
+          y: p1.y
+        })
+      });
+      await resp.json(); // primer punto
+      const resp2 = await fetch(`{% url 'core:video_click' project.pk video_session.pk %}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+          x: p2.x,
+          y: p2.y
+        })
+      });
+      const data = await resp2.json();
+      if (data.real_distance !== undefined && data.real_distance !== null) {
+        const unit = data.unit || 'cm';
+        const value = Number(data.real_distance);
+        if (!isNaN(value)) return `${value.toFixed(2)} ${unit}`;
+      } else if (data.distance !== undefined && data.distance !== null) {
+        const value = Number(data.distance);
+        if (!isNaN(value)) return `${value.toFixed(2)} px`;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function addPointToOverlay(x, y, number, isCalibration=false) {
+    const overlay = document.getElementById('videoOverlay');
+    const point = document.createElement('div');
+    point.className = isCalibration ? 'measurement-point bg-warning' : 'measurement-point';
+    point.style.left = x + 'px';
+    point.style.top = y + 'px';
+    point.setAttribute('data-number', number);
+    overlay.appendChild(point);
+  }
+
+  function addLineToOverlay(p1, p2) {
+    const overlay = document.getElementById('videoOverlay');
+    const line = document.createElement('div');
+    line.className = 'measurement-line';
+    
+    const distance = calculateDistance(p1, p2);
+    const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+    
+    line.style.left = p1.x + 'px';
+    line.style.top = p1.y + 'px';
+    line.style.width = distance + 'px';
+    line.style.transform = `rotate(${angle}deg)`;
+    
+    overlay.appendChild(line);
+  }
+
+  function addDistanceText(p1, p2, distance) {
+    const overlay = document.getElementById('videoOverlay');
+    const text = document.createElement('div');
+    text.className = 'measurement-text';
+    
+    const midX = (p1.x + p2.x) / 2;
+    const midY = (p1.y + p2.y) / 2;
+    
+    text.style.left = midX + 'px';
+    text.style.top = (midY - 20) + 'px';
+    // distance may be a formatted string already (e.g. "12.34 cm") or numeric px value
+    if (typeof distance === 'string') {
+      text.textContent = distance;
+    } else if (typeof distance === 'number') {
+      text.textContent = distance.toFixed(2) + ' px';
+    } else {
+      text.textContent = distance ? String(distance) : '-';
+    }
+    
+    overlay.appendChild(text);
+  }
+
+  function clearMeasurementOverlay() {
+    document.getElementById('videoOverlay').innerHTML = '';
+  }
+
+  function clearMeasurements() {
+    measurementPoints = [];
+    clearMeasurementOverlay();
+    document.getElementById('currentMeasurementPanel').style.display = 'none';
+    isMeasuring = false;
+    
+    // Send clear request to server
+    fetch(`{% url 'core:clear_video_measurements' project.pk video_session.pk %}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        console.log('Mediciones y señales limpiadas correctamente');
+        // Show success message
+        showNotification('Señales y mediciones limpiadas correctamente', 'success');
+      }
+    })
+    .catch(error => {
+      console.error('Error clearing measurements:', error);
+      showNotification('Error al limpiar las mediciones', 'error');
+    });
+  }
+
+  function sendMeasurementToServer(x, y) {
+    fetch(`{% url 'core:video_click' project.pk video_session.pk %}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        x: x,
+        y: y
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.distance) {
+        console.log('Measurement sent:', data);
+      }
+    })
+    .catch(error => {
+      console.error('Error sending measurement:', error);
+    });
+  }
+
+  function saveMeasurement() {
+    if (measurementPoints.length !== 2) return;
+    
+    const distance = calculateDistance(measurementPoints[0], measurementPoints[1]);
+    const name = prompt('Nombre de la medición:', `Medición ${measurementCount + 1}`);
+    
+    if (name) {
+      fetch(`{% url 'core:save_video_measurement' project.pk video_session.pk %}`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: name,
+          type: 'distance',
+          value_pixels: distance,
+          points: measurementPoints,
+          timestamp: (new Date() - sessionStartTime) / 1000
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          measurementCount++;
+          document.getElementById('measurementCount').textContent = measurementCount;
+          loadRecentMeasurements();
+          clearMeasurements();
+        }
+      })
+      .catch(error => {
+        console.error('Error saving measurement:', error);
+      });
+    }
+  }
+
+  function toggleShapeDetection() {
+    shapeDetectionEnabled = !shapeDetectionEnabled;
+    const toggle = document.getElementById('detectionToggle');
+    toggle.textContent = `Detección: ${shapeDetectionEnabled ? 'ON' : 'OFF'}`;
+  }
+
+  // Removed manual calibration functions as calibration is now automatic with ArUco markers
+
+  function startSessionTimer() {
+    setInterval(function() {
+      const now = new Date();
+      const duration = now - sessionStartTime;
+      const hours = Math.floor(duration / 3600000);
+      const minutes = Math.floor((duration % 3600000) / 60000);
+      const seconds = Math.floor((duration % 60000) / 1000);
+      
+      document.getElementById('sessionDuration').textContent = 
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }, 1000);
+  }
+
+  function loadRecentMeasurements() {
+    // First try live measurements from the ArUco/status endpoint (faster, in-memory)
+    fetch(`{% url 'core:check_aruco_status' project.pk video_session.pk %}`)
+      .then(resp => resp.json())
+      .then(statusData => {
+        const container = document.getElementById('recentMeasurements');
+        const saveAllBtn = document.getElementById('saveAllMeasurements');
+        const objectCounter = document.getElementById('objectCount');
+
+        // Helper to render a list of measurements (array of objects)
+        const renderMeasurements = (measurements) => {
+          container.innerHTML = '';
+          if (!measurements || measurements.length === 0) {
+            container.innerHTML = '<p class="text-muted small text-center">No hay objetos detectados</p>';
+            objectCounter.textContent = '0';
+            saveAllBtn.style.display = 'none';
+            return;
+          }
+
+          objectCounter.textContent = measurements.length;
+          saveAllBtn.style.display = 'block';
+
+          // enable save only if session has been confirmed/calibrated
+          try {
+            // statusData comes from the outer scope (check_aruco_status response)
+            if (typeof statusData !== 'undefined' && statusData && statusData.is_calibrated) {
+              saveAllBtn.disabled = false;
+              saveAllBtn.title = 'Guardar todas las mediciones detectadas';
+            } else {
+              saveAllBtn.disabled = true;
+              saveAllBtn.title = 'Confirma calibración para habilitar';
+            }
+          } catch (e) {
+            // ignore any errors toggling the button
+          }
+
+          measurements.forEach((m, idx) => {
+            // compute id and shape safely
+            const objectId = m.object_id || m.id || idx + 1;
+            const rawShape = m.shape_type || m.shapeType || m.type || 'Objeto';
+            const shapeKey = (typeof rawShape === 'string') ? rawShape.toLowerCase() : 'objeto';
+
+            // Avoid duplicate cards
+            if (container.querySelector(`[data-object-id="${objectId}"]`)) return;
+
+            const card = document.createElement('div');
+            card.className = `object-card ${shapeKey}`;
+            card.setAttribute('data-object-id', objectId);
+
+            // Build detailed HTML per shape type with prioritized fields (use explicit null checks so 0 values render)
+            const coalesce = (...args) => { for (let a of args) if (typeof a !== 'undefined' && a !== null) return a; return null; };
+            const areaVal = coalesce(m.area_cm2, m.area, m.area_cm);
+            const widthVal = coalesce(m.width_cm, m.width);
+            const heightVal = coalesce(m.height_cm, m.height);
+            const radiusVal = coalesce(m.radius_cm, m.radius);
+            const diameterVal = coalesce(m.diameter_cm, m.diameter, (radiusVal !== null ? radiusVal * 2 : null));
+            const perimeterVal = coalesce(m.perimeter_cm, m.perimeter, m.perim_cm);
+
+            let detailsHtml = '';
+            const shapeNameLower = (rawShape || '').toString().toLowerCase();
+
+            if (shapeNameLower.includes('triang') || shapeNameLower === 'triangulo') {
+              // Triangle: sides a,b,c, area, perimeter
+              const a = coalesce(m.side_a, (m.sides_cm && m.sides_cm[0]));
+              const b = coalesce(m.side_b, (m.sides_cm && m.sides_cm[1]));
+              const c = coalesce(m.side_c, (m.sides_cm && m.sides_cm[2]));
+              if (a !== null) detailsHtml += `<div class="measurement-value"><strong>Lado A:</strong> ${Number(a).toFixed(2)} cm</div>`;
+              if (b !== null) detailsHtml += `<div class="measurement-value"><strong>Lado B:</strong> ${Number(b).toFixed(2)} cm</div>`;
+              if (c !== null) detailsHtml += `<div class="measurement-value"><strong>Lado C:</strong> ${Number(c).toFixed(2)} cm</div>`;
+              if (areaVal !== null) detailsHtml += `<div class="measurement-value"><strong>Área aproximada:</strong> ${Number(areaVal).toFixed(2)} cm²</div>`;
+              if (perimeterVal !== null) detailsHtml += `<div class="measurement-value"><strong>Perímetro:</strong> ${Number(perimeterVal).toFixed(2)} cm</div>`;
+            } else if (shapeNameLower.includes('rect') || shapeNameLower === 'rectangulo' || shapeNameLower === 'rectángulo') {
+              // Rectangle: width x height, area, perimeter
+              if (widthVal !== null) detailsHtml += `<div class="measurement-value"><strong>Ancho:</strong> ${Number(widthVal).toFixed(2)} cm</div>`;
+              if (heightVal !== null) detailsHtml += `<div class="measurement-value"><strong>Alto:</strong> ${Number(heightVal).toFixed(2)} cm</div>`;
+              if (areaVal !== null) detailsHtml += `<div class="measurement-value"><strong>Área aproximada:</strong> ${Number(areaVal).toFixed(2)} cm²</div>`;
+              if (perimeterVal !== null) detailsHtml += `<div class="measurement-value"><strong>Perímetro:</strong> ${Number(perimeterVal).toFixed(2)} cm</div>`;
+            } else if (shapeNameLower.includes('cuadr') || shapeNameLower === 'cuadrado') {
+              // Square: width/height same, area, perimeter
+              if (widthVal !== null) detailsHtml += `<div class="measurement-value"><strong>Ancho:</strong> ${Number(widthVal).toFixed(2)} cm</div>`;
+              if (heightVal !== null) detailsHtml += `<div class="measurement-value"><strong>Alto:</strong> ${Number(heightVal).toFixed(2)} cm</div>`;
+              if (areaVal !== null) detailsHtml += `<div class="measurement-value"><strong>Área aproximada:</strong> ${Number(areaVal).toFixed(2)} cm²</div>`;
+              if (perimeterVal !== null) detailsHtml += `<div class="measurement-value"><strong>Perímetro:</strong> ${Number(perimeterVal).toFixed(2)} cm</div>`;
+            } else if (shapeNameLower.includes('circul') || shapeNameLower === 'circulo' || shapeNameLower === 'círculo') {
+              // Circle: radius, diameter, area, perimeter
+              if (radiusVal !== null) detailsHtml += `<div class="measurement-value"><strong>Radio:</strong> ${Number(radiusVal).toFixed(2)} cm</div>`;
+              if (diameterVal !== null) detailsHtml += `<div class="measurement-value"><strong>Diámetro:</strong> ${Number(diameterVal).toFixed(2)} cm</div>`;
+              if (areaVal !== null) detailsHtml += `<div class="measurement-value"><strong>Área:</strong> ${Number(areaVal).toFixed(2)} cm²</div>`;
+              if (perimeterVal !== null) detailsHtml += `<div class="measurement-value"><strong>Perímetro:</strong> ${Number(perimeterVal).toFixed(2)} cm</div>`;
+            } else {
+              // Generic object: width, height, area, perimeter
+              if (widthVal !== null) detailsHtml += `<div class="measurement-value"><strong>Ancho:</strong> ${Number(widthVal).toFixed(2)} cm</div>`;
+              if (heightVal !== null) detailsHtml += `<div class="measurement-value"><strong>Alto:</strong> ${Number(heightVal).toFixed(2)} cm</div>`;
+              if (areaVal !== null) detailsHtml += `<div class="measurement-value"><strong>Área aproximada:</strong> ${Number(areaVal).toFixed(2)} cm²</div>`;
+              if (perimeterVal !== null) detailsHtml += `<div class="measurement-value"><strong>Perímetro:</strong> ${Number(perimeterVal).toFixed(2)} cm</div>`;
+            }
+
+            // Last-resort fallback when nothing above rendered
+            if (!detailsHtml) {
+              detailsHtml = `<div class="measurement-value"><em>Sin valores disponibles</em></div>`;
+            }
+
+            card.innerHTML = `
+              <span class="object-number"><strong> Obj: </strong> ${objectId}</span><br>
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <h6 class="mb-0">${rawShape}</h6>
+                <span class="badge bg-${getBadgeColor(rawShape)}">${rawShape}</span>
+              </div>
+              ${detailsHtml}
+            `;
+
+            container.appendChild(card);
+          });
+        };
+
+        // If there are live measurements reported by the handler, render them
+        if (statusData.measurements && statusData.measurements.length > 0) {
+          renderMeasurements(statusData.measurements);
+          return;
+        }
+
+        // Otherwise fall back to persisted/exported measurements (DB)
+        return fetch(`{% url 'core:video_measurements_export' project.pk video_session.pk %}`)
+          .then(resp2 => resp2.json())
+          .then(exportData => {
+            const persisted = exportData.measurements || [];
+            renderMeasurements(persisted);
+          })
+          .catch(err => {
+            console.error('Error fetching exported measurements:', err);
+          });
+      })
+      .catch(err => {
+        console.error('Error fetching live measurements:', err);
+      });
+  }
+
+  // Gesture control functions
+  function toggleGestureMode() {
+    gestureModeEnabled = !gestureModeEnabled;
+    const toggle = document.getElementById('gestureToggle');
+    toggle.textContent = `Gestos: ${gestureModeEnabled ? 'ON' : 'OFF'}`;
+    
+    // Send gesture mode to server
+    fetch(`{% url 'core:set_gesture_mode' project.pk video_session.pk %}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        gesture_mode: gestureModeEnabled,
+        calibration_mode: false,
+        measurement_mode: false
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        console.log('Gesture mode updated:', data.modes);
+      }
+    })
+    .catch(error => {
+      console.error('Error updating gesture mode:', error);
+    });
+  }
+
+
+
+  function showAutoCalibrationModal() {
+    const modal = new bootstrap.Modal(document.getElementById('autoCalibrationModal'));
+    modal.show();
+  }
+
+  function autoCalibrateWithFingers() {
+    const fingerDistance = document.getElementById('fingerDistance').value;
+    
+    if (!fingerDistance) {
+      alert('Por favor ingresa la distancia entre tus dedos');
+      return;
+    }
+    
+    // Show status
+    document.getElementById('autoCalibrationStatus').style.display = 'block';
+    
+    // Send auto-calibration request
+    fetch(`{% url 'core:auto_calibrate_video' project.pk video_session.pk %}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        known_distance_cm: parseFloat(fingerDistance)
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      document.getElementById('autoCalibrationStatus').style.display = 'none';
+      
+      if (data.success) {
+        alert(`¡Calibración exitosa! ${data.calibration.pixels_per_cm.toFixed(2)} píxeles por cm`);
+        location.reload(); // Reload to show calibrated status
+      } else {
+        alert('Error en la calibración: ' + (data.message || 'No se detectaron dedos'));
+      }
+    })
+    .catch(error => {
+      document.getElementById('autoCalibrationStatus').style.display = 'none';
+      console.error('Error in auto-calibration:', error);
+      alert('Error en la calibración automática');
+    });
+  }
+
+  // Enhanced measurement with gestures
+  function startGestureMeasurement() {
+    if (!gestureModeEnabled) {
+      alert('Activa el modo de gestos primero');
+      return;
+    }
+    
+    // Enable measurement mode
+    fetch(`{% url 'core:set_gesture_mode' project.pk video_session.pk %}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        gesture_mode: true,
+        calibration_mode: false,
+        measurement_mode: true
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        isMeasuring = true;
+        document.getElementById('currentMeasurementPanel').style.display = 'block';
+        document.getElementById('currentMeasurement').innerHTML = '<p class="text-muted">Haz gestos de PINCH con tus dedos para marcar puntos</p>';
+      }
+    })
+    .catch(error => {
+      console.error('Error starting gesture measurement:', error);
+    });
+  }
+
+  // Poll for gesture data
+  function pollGestureData() {
+    if (gestureModeEnabled) {
+      fetch(`{% url 'core:get_gesture_data' project.pk video_session.pk %}`, {
+        method: 'GET',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const gestureData = data.gesture_data;
+          
+          // Update measurement points if we have them
+          if (gestureData.measurement_points && gestureData.measurement_points.length >= 2) {
+            const points = gestureData.measurement_points;
+            const distance = calculateDistance(
+              {x: points[0][0], y: points[0][1]}, 
+              {x: points[1][0], y: points[1][1]}
+            );
+            
+            document.getElementById('currentMeasurement').innerHTML = `
+              <div class="measurement-item">
+                <strong>Distancia por gestos:</strong> ${distance.toFixed(2)} px
+                <br><small class="text-muted">Puntos: (${points[0][0]}, ${points[0][1]}) → (${points[1][0]}, ${points[1][1]})</small>
+              </div>
+            `;
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Error polling gesture data:', error);
+      });
+    }
+  }
+
+  function pollGestureData() {
+    if (!gestureModeEnabled) return;  // No hacer polling si el modo de gestos está desactivado
+    
+    fetch(`{% url 'core:get_gesture_data' project.pk video_session.pk %}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Procesar los datos de gestos si es necesario
+          console.log('Gesture data:', data);
+        }
+      })
+      .catch(error => {
+        console.error('Error polling gesture data:', error);
+      });
+  }
+
+  function getBadgeColor(shapeType) {
+    switch(shapeType.toLowerCase()) {
+      case 'circulo': return 'success';
+      case 'triangulo': return 'warning';
+      case 'rectangulo': return 'info';
+      case 'cuadrado': return 'primary';
+      default: return 'secondary';
+    }
+  }
+
+  function saveAllMeasurements() {
+    fetch(`{% url 'core:save_all_measurements' project.pk video_session.pk %}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showNotification('Todas las mediciones han sido guardadas', 'success');
+        // Limpiamos las mediciones después de guardar
+        document.getElementById('recentMeasurements').innerHTML = 
+          '<p class="text-muted small text-center">No hay objetos detectados</p>';
+        document.getElementById('objectCount').textContent = '0';
+        document.getElementById('saveAllMeasurements').style.display = 'none';
+      } else {
+        showNotification('Error al guardar las mediciones', 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Error saving measurements:', error);
+      showNotification('Error al guardar las mediciones', 'error');
+    });
+  }
+
+  // Event listener for save all button
+  document.getElementById('saveAllMeasurements').addEventListener('click', saveAllMeasurements);
+
+  // Start polling for ArUco status and gesture data - Increased frequency for smoother updates
+  setInterval(checkArucoStatus, 500);  // Verificar ArUco cada medio segundo
+  setInterval(pollGestureData, 500);   // Verificar gestos cada medio segundo
+  setInterval(loadRecentMeasurements, 250); // Actualizar mediciones cada cuarto de segundo para mayor fluidez
+
+  // Notification system
+  function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.remove();
+      }
+    }, 3000);
+  }
+</script>
+{% endblock %}

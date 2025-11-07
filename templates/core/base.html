@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="{% if user_theme == 'auto' %}light{% else %}{{ user_theme }}{% endif %}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sistema de medición y análisis geométrico mediante visión por computadora">
+  <title>{% block title %}Medición Geométrica{% endblock %}</title>
+
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+  <!-- Custom CSS -->
+  <style>
+      :root {
+          /* Light theme colors */
+          --bg-primary: #ffffff;
+          --bg-secondary: #f8f9fa;
+          --bg-tertiary: #e9ecef;
+          --text-primary: #212529;
+          --text-secondary: #6c757d;
+          --text-muted: #adb5bd;
+          --border-color: #dee2e6;
+          --shadow: rgba(0, 0, 0, 0.1);
+          --shadow-hover: rgba(0, 0, 0, 0.15);
+
+          /* Brand colors */
+          --primary: #667eea;
+          --primary-dark: #5a67d8;
+          --secondary: #764ba2;
+          --accent: #f093fb;
+          --success: #48bb78;
+          --warning: #ed8936;
+          --danger: #f56565;
+          --info: #4299e1;
+
+          /* Gradients */
+          --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+          --gradient-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+
+          /* Spacing */
+          --border-radius: 12px;
+          --border-radius-sm: 8px;
+          --border-radius-lg: 16px;
+
+          /* Transitions */
+          --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Dark theme colors */
+      [data-bs-theme="dark"] {
+          --bg-primary: #0f0f23;
+          --bg-secondary: #1a1a2e;
+          --bg-tertiary: #16213e;
+          --text-primary: #ffffff;
+          --text-secondary: #a0aec0;
+          --text-muted: #718096;
+          --border-color: #2d3748;
+          --shadow: rgba(0, 0, 0, 0.3);
+          --shadow-hover: rgba(0, 0, 0, 0.4);
+      }
+
+      * {
+          box-sizing: border-box;
+      }
+
+      body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: var(--bg-primary);
+          color: var(--text-primary);
+          line-height: 1.6;
+          margin: 0;
+          padding: 0;
+          transition: var(--transition);
+      }
+
+      /* Navigation */
+      .navbar {
+          background: var(--gradient-primary);
+          border: none;
+          box-shadow: 0 4px 20px var(--shadow);
+          padding: 1rem 0;
+      }
+
+      .navbar-brand {
+          font-weight: 700;
+          font-size: 1.5rem;
+          color: white !important;
+          text-decoration: none;
+      }
+
+      .navbar-brand:hover {
+          color: white !important;
+          transform: scale(1.05);
+          transition: var(--transition);
+      }
+
+      .navbar-nav .nav-link {
+          color: rgba(255, 255, 255, 0.9) !important;
+          font-weight: 500;
+          padding: 0.5rem 1rem;
+          border-radius: var(--border-radius-sm);
+          transition: var(--transition);
+      }
+
+      .navbar-nav .nav-link:hover {
+          background: rgba(255, 255, 255, 0.1);
+          color: white !important;
+      }
+
+      .dropdown-menu {
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: var(--border-radius);
+          box-shadow: 0 10px 25px var(--shadow);
+          padding: 0.5rem 0;
+      }
+
+      .dropdown-item {
+          color: var(--text-primary);
+          padding: 0.75rem 1.5rem;
+          transition: var(--transition);
+      }
+
+      .dropdown-item:hover {
+          background: var(--bg-tertiary);
+          color: var(--text-primary);
+      }
+
+      /* Sidebar */
+      .sidebar {
+          background: var(--bg-secondary);
+          min-height: calc(100vh - 80px);
+          border-right: 1px solid var(--border-color);
+          padding: 0;
+          position: sticky;
+          top: 80px;
+      }
+
+      .sidebar .nav-link {
+          color: var(--text-secondary);
+          padding: 1rem 1.5rem;
+          border: none;
+          border-radius: 0;
+          transition: var(--transition);
+          position: relative;
+          font-weight: 500;
+      }
+
+      .sidebar .nav-link:hover {
+          background: var(--bg-tertiary);
+          color: var(--text-primary);
+          transform: translateX(4px);
+      }
+
+      .sidebar .nav-link.active {
+          background: var(--gradient-primary);
+          color: white;
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+      }
+
+      .sidebar .nav-link.active::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background: white;
+      }
+
+      .sidebar .nav-link i {
+          width: 20px;
+          margin-right: 0.75rem;
+          font-size: 1.1rem;
+      }
+
+      /* Main content */
+      .main-content {
+          background: var(--bg-primary);
+          min-height: calc(100vh - 80px);
+          padding: 0;
+      }
+
+      .content-header {
+          background: var(--bg-secondary);
+          border-bottom: 1px solid var(--border-color);
+          padding: 0.3rem 0;
+          margin-bottom: 1rem;
+      }
+
+      .content-header h1 {
+          color: var(--text-primary);
+          font-weight: 700;
+          font-size: 2.5rem;
+          margin: 0;
+          background: var(--gradient-primary);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+      }
+
+      .breadcrumb {
+          background: none;
+          padding: 0;
+          margin: 0.5rem 0 0 0;
+      }
+
+      .breadcrumb-item a {
+          color: var(--text-secondary);
+          text-decoration: none;
+          transition: var(--transition);
+      }
+
+      .breadcrumb-item a:hover {
+          color: var(--primary);
+      }
+
+      /* Cards */
+      .card {
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: var(--border-radius);
+          box-shadow: 0 4px 6px var(--shadow);
+          transition: var(--transition);
+          overflow: hidden;
+      }
+
+      .card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 10px 25px var(--shadow-hover);
+      }
+
+      .card-header {
+          background: var(--gradient-primary);
+          color: white;
+          border: none;
+          padding: 1.5rem;
+          font-weight: 600;
+      }
+
+      .card-body {
+          padding: 1.5rem;
+          background: var(--bg-secondary);
+      }
+
+      /* Buttons */
+      .btn {
+          border-radius: var(--border-radius-sm);
+          font-weight: 600;
+          padding: 0.75rem 1.5rem;
+          transition: var(--transition);
+          border: none;
+          position: relative;
+          overflow: hidden;
+      }
+
+      .btn::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+          transition: left 0.5s;
+      }
+
+      .btn:hover::before {
+          left: 100%;
+      }
+
+      .btn-primary {
+          background: var(--gradient-primary);
+          color: white;
+      }
+
+      .btn-primary:hover {
+          background: var(--gradient-primary);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-success {
+          background: var(--gradient-success);
+          color: white;
+      }
+
+      .btn-outline-primary {
+          border: 2px solid var(--primary);
+          color: var(--primary);
+          background: transparent;
+      }
+
+      .btn-outline-primary:hover {
+          background: var(--primary);
+          color: white;
+          transform: translateY(-2px);
+      }
+
+      /* Forms */
+      .form-control {
+          background: var(--bg-tertiary);
+          border: 1px solid var(--border-color);
+          color: var(--text-primary);
+          border-radius: var(--border-radius-sm);
+          padding: 0.75rem 1rem;
+          transition: var(--transition);
+      }
+
+      .form-control:focus {
+          background: var(--bg-secondary);
+          border-color: var(--primary);
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+          color: var(--text-primary);
+      }
+
+      .form-label {
+          color: var(--text-primary);
+          font-weight: 600;
+          margin-bottom: 0.5rem;
+      }
+
+      /* Alerts */
+      .alert {
+          border: none;
+          border-radius: var(--border-radius);
+          padding: 1rem 1.5rem;
+          margin-bottom: 1.5rem;
+          box-shadow: 0 4px 6px var(--shadow);
+      }
+
+      .alert_modal {
+          border: none;
+          border-radius: var(--border-radius);
+          padding: 1rem 1.5rem;
+          margin-bottom: 1.5rem;
+          box-shadow: 0 4px 6px var(--shadow);
+      }
+
+      .alert-success {
+          background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+          color: #155724;
+      }
+
+      .alert-danger {
+          background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+          color: #721c24;
+      }
+
+      .alert-warning {
+          background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+          color: #856404;
+      }
+
+      .alert-info {
+          background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+          color: #0c5460;
+      }
+
+      [data-bs-theme="dark"] .alert-success {
+          background: linear-gradient(135deg, #1a4d3a 0%, #2d5a47 100%);
+          color: #a7f3d0;
+      }
+
+      [data-bs-theme="dark"] .alert-danger {
+          background: linear-gradient(135deg, #4d1a1a 0%, #5a2d2d 100%);
+          color: #fca5a5;
+      }
+
+      [data-bs-theme="dark"] .alert-warning {
+          background: linear-gradient(135deg, #4d3a1a 0%, #5a472d 100%);
+          color: #fde68a;
+      }
+
+      [data-bs-theme="dark"] .alert-info {
+          background: linear-gradient(135deg, #1a3d4d 0%, #2d475a 100%);
+          color: #a5f3fc;
+      }
+
+      /* Stats cards */
+      .stats-card {
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: var(--border-radius);
+          padding: 2rem;
+          text-align: center;
+          transition: var(--transition);
+          position: relative;
+          overflow: hidden;
+      }
+
+      .stats-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: var(--gradient-primary);
+      }
+
+      .stats-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 10px 25px var(--shadow-hover);
+      }
+
+      .stats-number {
+          font-size: 3rem;
+          font-weight: 700;
+          background: var(--gradient-primary);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin-bottom: 0.5rem;
+      }
+
+      .stats-label {
+          color: var(--text-secondary);
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          font-size: 0.875rem;
+      }
+
+      /* Loading overlay */
+      .spinner-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.8);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 9999;
+          backdrop-filter: blur(4px);
+      }
+
+      .spinner-border {
+          width: 4rem;
+          height: 4rem;
+          border-width: 0.5rem;
+      }
+
+      /* Responsive design */
+      @media (max-width: 768px) {
+          .sidebar {
+              position: fixed;
+              top: 80px;
+              left: -100%;
+              width: 80%;
+              z-index: 1000;
+              transition: left 0.3s ease;
+              box-shadow: 0 4px 20px var(--shadow);
+          }
+
+          .sidebar.show {
+              left: 0;
+          }
+
+          .content-header h1 {
+              font-size: 2rem;
+          }
+
+          .stats-number {
+              font-size: 2.5rem;
+          }
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+          width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+          background: var(--bg-tertiary);
+      }
+
+      ::-webkit-scrollbar-thumb {
+          background: var(--primary);
+          border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+          background: var(--primary-dark);
+      }
+
+      /* Animation keyframes */
+      @keyframes fadeInUp {
+          from {
+              opacity: 0;
+              transform: translateY(30px);
+          }
+          to {
+              opacity: 1;
+              transform: translateY(0);
+          }
+      }
+
+      .fade-in-up {
+          animation: fadeInUp 0.6s ease-out;
+      }
+
+      /* Theme toggle button */
+      .theme-toggle {
+          background: none;
+          border: none;
+          color: inherit;
+          font-size: 1.2rem;
+          padding: 0.5rem;
+          border-radius: var(--border-radius-sm);
+          transition: var(--transition);
+      }
+
+      .theme-toggle:hover {
+          background: rgba(255, 255, 255, 0.1);
+      }
+  </style>
+
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+<!-- Navigation -->
+<nav class="navbar navbar-expand-lg">
+  <div class="container-fluid">
+    <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <a class="navbar-brand" href="{% url 'core:dashboard' %}">
+      <i class="fas fa-ruler-combined me-2"></i>
+      MediciónGeo
+    </a>
+
+    <div class="navbar-nav ms-auto">
+      <div class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+          <i class="fas fa-user-circle me-2"></i>
+          {% if user.is_authenticated %}
+            {{ user.get_full_name|default:user.username }}
+          {% else %}
+            Invitado
+          {% endif %}
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end">
+
+          {% if user.is_authenticated %}
+            <li>
+              <a class="dropdown-item" href="{% url 'core:user_profile' %}">
+                <i class="fas fa-user me-2"></i>Perfil
+              </a>
+            </li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+
+            <li>
+              <a class="dropdown-item" href="{% url 'core:user_settings' %}">
+                <i class="fas fa-cog me-2"></i>Configuración
+              </a>
+            </li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+          {% else %}
+
+            <li>
+              <a class="dropdown-item" href="{% url 'login' %}">
+                <i class="fas fa-user me-2"></i>Iniciar Sesión
+              </a>
+            </li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+          {% endif %}
+
+          <li>
+            <button class="dropdown-item" onclick="toggleTheme()">
+              <i class="fas fa-moon me-2" id="theme-icon"></i>
+              <span id="theme-text">Modo Oscuro</span>
+            </button>
+          </li>
+
+          {% if user.is_authenticated %}
+            <li>
+              <hr class="dropdown-divider">
+            </li>
+            <li>
+              <form method="post" action="{% url 'logout' %}" class="m-0 p-0">
+                {% csrf_token %}
+                <button type="submit" class="dropdown-item d-flex align-items-center">
+                  <i class="fas fa-sign-out-alt me-2"></i>
+                  <span>Cerrar Sesión</span>
+                </button>
+              </form>
+            </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</nav>
+
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar -->
+    <nav class="col-lg-2 d-lg-block sidebar collapse" id="sidebar">
+      <ul class="nav flex-column">
+        {% if user.is_authenticated %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+               href="{% url 'core:dashboard' %}">
+              <i class="fas fa-tachometer-alt"></i>
+              Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if 'project_list' in request.resolver_match.url_name %}active{% endif %}"
+               href="{% url 'core:project_list' %}">
+              <i class="fas fa-folder-open"></i>
+              Mis Proyectos
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'project_create' %}active{% endif %}"
+               href="{% url 'core:project_create' %}">
+              <i class="fas fa-plus-circle"></i>
+              Nuevo Proyecto
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'gallery' %}active{% endif %}"
+               href="{% url 'core:gallery' %}">
+              <i class="fas fa-images"></i>
+              Galería
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'statistics' %}active{% endif %}"
+               href="{% url 'core:statistics' %}">
+              <i class="fas fa-chart-bar"></i>
+              Estadísticas
+            </a>
+          </li>
+        {% endif %}
+        <li class="nav-item">
+          <a class="nav-link {% if request.resolver_match.url_name == 'help' %}active{% endif %}"
+             href="{% url 'core:help' %}">
+            <i class="fas fa-question-circle"></i>
+            Ayuda
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Main content -->
+    <main class="col-lg-10 ms-sm-auto main-content">
+      <!-- Content header -->
+      {% if user.is_authenticated %}
+        <div class="content-header">
+          <div class="container-fluid px-4">
+            <div class="row align-items-center">
+              <div class="col-md-6">
+                <h1 class="fade-in-up">{% block page_title %}Dashboard{% endblock %}</h1>
+                {% block breadcrumb %}
+                  <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                      <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+                    </ol>
+                  </nav>
+                {% endblock %}
+              </div>
+              <div class="col-md-6 text-end">
+                {% block page_actions %}{% endblock %}
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Messages -->
+      <div class="container-fluid px-4">
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+              <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-triangle{% elif message.tags == 'warning' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Page content -->
+      <div class="container-fluid px-4 pb-4">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Loading overlay -->
+<div class="spinner-overlay d-none" id="loadingOverlay">
+  <div class="spinner-border text-primary" role="status">
+    <span class="visually-hidden">Cargando...</span>
+  </div>
+</div>
+
+<!-- Bootstrap 5.3 JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+
+<!-- Common JavaScript -->
+<script>
+  // Theme toggle functionality
+  function toggleTheme() {
+    const html = document.documentElement;
+    const currentTheme = html.getAttribute('data-bs-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+    html.setAttribute('data-bs-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+
+    // Update user preferences in database
+    updateUserTheme(newTheme);
+
+    const icon = document.getElementById('theme-icon');
+    const text = document.getElementById('theme-text');
+
+    if (newTheme === 'dark') {
+      icon.className = 'fas fa-sun me-2';
+      text.textContent = 'Modo Claro';
+    } else {
+      icon.className = 'fas fa-moon me-2';
+      text.textContent = 'Modo Oscuro';
+    }
+  }
+
+  // Update user theme in database
+  function updateUserTheme(theme) {
+    fetch('{% url "core:update_theme" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+      },
+      body: JSON.stringify({theme: theme})
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          console.log('Theme updated successfully');
+        }
+      })
+      .catch(error => {
+        console.error('Error updating theme:', error);
+      });
+  }
+
+  // Initialize theme on page load
+  document.addEventListener('DOMContentLoaded', function () {
+    // Get theme from user preferences or localStorage
+    const userTheme = '{{ user_theme }}';
+    const savedTheme = localStorage.getItem('theme');
+
+    let themeToApply;
+    // Priority: 1. User preferences, 2. localStorage, 3. default light
+    if (userTheme && userTheme !== 'auto') {
+      themeToApply = userTheme;
+      // Update localStorage to match user preferences
+      localStorage.setItem('theme', userTheme);
+    } else if (savedTheme) {
+      themeToApply = savedTheme;
+    } else {
+      themeToApply = 'light';
+      localStorage.setItem('theme', 'light');
+    }
+
+    document.documentElement.setAttribute('data-bs-theme', themeToApply);
+
+    const icon = document.getElementById('theme-icon');
+    const text = document.getElementById('theme-text');
+
+    // Update button state based on applied theme
+    if (themeToApply === 'dark') {
+      icon.className = 'fas fa-sun me-2';
+      text.textContent = 'Modo Claro';
+    } else {
+      icon.className = 'fas fa-moon me-2';
+      text.textContent = 'Modo Oscuro';
+    }
+
+    // Add fade-in animation to content
+    const content = document.querySelector('.main-content');
+    if (content) {
+      content.classList.add('fade-in-up');
+    }
+  });
+
+  // Show/hide loading overlay
+  function showLoading() {
+    document.getElementById('loadingOverlay').classList.remove('d-none');
+  }
+
+  function hideLoading() {
+    document.getElementById('loadingOverlay').classList.add('d-none');
+  }
+
+  // CSRF token for AJAX requests
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  const csrftoken = getCookie('csrftoken');
+
+  // Auto-hide alerts after 5 seconds
+  document.addEventListener('DOMContentLoaded', function () {
+    const alerts = document.querySelectorAll('.alert:not(.alert-dismissible)');
+    alerts.forEach(alert => {
+      setTimeout(() => {
+        alert.style.transition = 'opacity 0.5s ease-out';
+        alert.style.opacity = '0';
+        setTimeout(() => alert.remove(), 500);
+      }, 5000);
+    });
+  });
+
+  // Sidebar toggle for mobile
+  document.addEventListener('DOMContentLoaded', function () {
+    const sidebarToggle = document.querySelector('.navbar-toggler');
+    const sidebar = document.getElementById('sidebar');
+
+    if (sidebarToggle && sidebar) {
+      sidebarToggle.addEventListener('click', function () {
+        sidebar.classList.toggle('show');
+      });
+
+      // Close sidebar when clicking outside
+      document.addEventListener('click', function (e) {
+        if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+          sidebar.classList.remove('show');
+        }
+      });
+    }
+  });
+
+  // Form validation helpers
+  function validateImageFile(input) {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/bmp', 'image/tiff'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+
+      if (!allowedTypes.includes(file.type)) {
+        alert('Formato de archivo no soportado. Use JPEG, JPG, PNG, BMP o TIFF.');
+        input.value = '';
+        return false;
+      }
+
+      if (file.size > maxSize) {
+        alert('El archivo es demasiado grande. Máximo 10MB.');
+        input.value = '';
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // Initialize tooltips
+  document.addEventListener('DOMContentLoaded', function () {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  });
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

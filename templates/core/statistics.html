@@ -1,0 +1,620 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Estadísticas - MediciónGeo{% endblock %}
+
+{% block page_title %}Estadísticas y Análisis{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item active">Estadísticas</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .stats-header {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .main-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        text-align: center;
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--gradient-primary);
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px var(--shadow-hover);
+    }
+    
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 1.5rem;
+        color: white;
+    }
+    
+    .stat-number {
+        font-size: 3rem;
+        font-weight: 700;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.875rem;
+    }
+    
+    .stat-change {
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-top: 0.5rem;
+    }
+    
+    .stat-change.positive {
+        color: var(--success);
+    }
+    
+    .stat-change.negative {
+        color: var(--danger);
+    }
+    
+    .charts-section {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .chart-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+    }
+    
+    .chart-title {
+        color: var(--text-primary);
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .chart-title i {
+        margin-right: 0.5rem;
+        color: var(--primary);
+    }
+    
+    .chart-placeholder {
+        height: 300px;
+        background: var(--bg-tertiary);
+        border-radius: var(--border-radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        font-style: italic;
+    }
+    
+    .recent-activity {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .activity-title {
+        color: var(--text-primary);
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .activity-title i {
+        margin-right: 0.5rem;
+        color: var(--primary);
+    }
+    
+    .activity-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    
+    .activity-item {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-sm);
+        padding: 1.5rem;
+        text-align: center;
+    }
+    
+    .activity-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 0.5rem;
+    }
+    
+    .activity-label {
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.875rem;
+    }
+    
+    .projects-table {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .table-title {
+        color: var(--text-primary);
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .table-title i {
+        margin-right: 0.5rem;
+        color: var(--primary);
+    }
+    
+    .table {
+        color: var(--text-primary);
+    }
+    
+    .table th {
+        background: var(--bg-tertiary);
+        border: none;
+        color: var(--text-primary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.875rem;
+    }
+    
+    .table td {
+        border: none;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+    }
+    
+    .table tbody tr:hover {
+        background: var(--bg-tertiary);
+    }
+    
+    .project-name {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    
+    .project-meta {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+    
+    .badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .badge-success {
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        color: white;
+    }
+    
+    .badge-warning {
+        background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        color: white;
+    }
+    
+    .badge-info {
+        background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+        color: white;
+    }
+    
+    .measurement-types {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+    }
+    
+    .types-title {
+        color: var(--text-primary);
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .types-title i {
+        margin-right: 0.5rem;
+        color: var(--primary);
+    }
+    
+    .type-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: var(--bg-tertiary);
+        border-radius: var(--border-radius-sm);
+        margin-bottom: 0.5rem;
+    }
+    
+    .type-name {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    
+    .type-count {
+        background: var(--primary);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-muted);
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state h3 {
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state p {
+        margin-bottom: 2rem;
+    }
+    
+    @media (max-width: 768px) {
+        .charts-section {
+            grid-template-columns: 1fr;
+        }
+        
+        .main-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .activity-stats {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stats-container">
+    <!-- Statistics Header -->
+    <div class="stats-header">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="text-white mb-2">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Estadísticas y Análisis
+                </h1>
+                <p class="text-muted">Análisis detallado de tu actividad en MediciónGeo</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Statistics -->
+    <div class="main-stats">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-folder-open"></i>
+            </div>
+            <div class="stat-number">{{ stats.total_projects }}</div>
+            <div class="stat-label">Proyectos Totales</div>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up me-1"></i>
+                +{{ recent_activity.new_projects }} este mes
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-images"></i>
+            </div>
+            <div class="stat-number">{{ stats.total_images }}</div>
+            <div class="stat-label">Imágenes Procesadas</div>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up me-1"></i>
+                +{{ recent_activity.new_images }} este mes
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-ruler"></i>
+            </div>
+            <div class="stat-number">{{ stats.total_measurements }}</div>
+            <div class="stat-label">Mediciones Realizadas</div>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up me-1"></i>
+                +{{ recent_activity.new_measurements }} este mes
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-shapes"></i>
+            </div>
+            <div class="stat-number">{{ stats.total_shapes }}</div>
+            <div class="stat-label">Formas Detectadas</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-number">{{ stats.calibrated_images }}</div>
+            <div class="stat-label">Imágenes Calibradas</div>
+            <div class="stat-change positive">
+                <i class="fas fa-percentage me-1"></i>
+                {{ stats.calibrated_percentage }}%
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Section -->
+    <div class="charts-section">
+        <div class="chart-card">
+            <div class="chart-title">
+                <i class="fas fa-chart-line"></i>
+                Actividad Mensual
+            </div>
+            <div class="chart-placeholder">
+                <div class="text-center">
+                    <i class="fas fa-chart-line fa-3x mb-3"></i>
+                    <p>Gráfico de actividad en desarrollo</p>
+                    <small>Datos disponibles: {{ monthly_data|length }} meses</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <div class="chart-title">
+                <i class="fas fa-pie-chart"></i>
+                Distribución de Mediciones
+            </div>
+            <div class="chart-placeholder">
+                <div class="text-center">
+                    <i class="fas fa-chart-pie fa-3x mb-3"></i>
+                    <p>Gráfico de distribución en desarrollo</p>
+                    <small>Tipos: {{ measurement_types|length }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="recent-activity">
+        <div class="activity-title">
+            <i class="fas fa-clock"></i>
+            Actividad Reciente (Últimos 30 días)
+        </div>
+        <div class="activity-stats">
+            <div class="activity-item">
+                <div class="activity-number">{{ recent_activity.new_projects }}</div>
+                <div class="activity-label">Nuevos Proyectos</div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-number">{{ recent_activity.new_images }}</div>
+                <div class="activity-label">Nuevas Imágenes</div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-number">{{ recent_activity.new_measurements }}</div>
+                <div class="activity-label">Nuevas Mediciones</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Projects Table -->
+    {% if project_stats %}
+    <div class="projects-table">
+        <div class="table-title">
+            <i class="fas fa-list"></i>
+            Proyectos Recientes
+        </div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Proyecto</th>
+                        <th>Imágenes</th>
+                        <th>Mediciones</th>
+                        <th>Formas</th>
+                        <th>Estado</th>
+                        <th>Creado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for project in project_stats %}
+                    <tr>
+                        <td>
+                            <div class="project-name">{{ project.name }}</div>
+                            <div class="project-meta">{{ project.description|truncatechars:50 }}</div>
+                        </td>
+                        <td>
+                            <span class="badge badge-info">{{ project.image_count }}</span>
+                        </td>
+                        <td>
+                            <span class="badge badge-success">{{ project.measurement_count }}</span>
+                        </td>
+                        <td>
+                            <span class="badge badge-warning">{{ project.shape_count }}</span>
+                        </td>
+                        <td>
+                            {% if project.is_active %}
+                                <span class="badge badge-success">Activo</span>
+                            {% else %}
+                                <span class="badge badge-warning">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ project.created_at|date:"d/m/Y" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Measurement Types -->
+    {% if measurement_types %}
+    <div class="measurement-types">
+        <div class="types-title">
+            <i class="fas fa-ruler-combined"></i>
+            Tipos de Mediciones
+        </div>
+        {% for type in measurement_types %}
+        <div class="type-item">
+            <div class="type-name">
+                {% if type.measurement_type == 'distance' %}
+                    <i class="fas fa-ruler me-2"></i>Distancia
+                {% elif type.measurement_type == 'area' %}
+                    <i class="fas fa-square me-2"></i>Área
+                {% elif type.measurement_type == 'perimeter' %}
+                    <i class="fas fa-circle me-2"></i>Perímetro
+                {% else %}
+                    <i class="fas fa-ruler me-2"></i>{{ type.measurement_type|title }}
+                {% endif %}
+            </div>
+            <div class="type-count">{{ type.count }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Empty State -->
+    {% if not stats.total_projects %}
+    <div class="empty-state">
+        <i class="fas fa-chart-bar"></i>
+        <h3>No hay datos para mostrar</h3>
+        <p>Crea tu primer proyecto para comenzar a ver estadísticas</p>
+        <a href="{% url 'core:project_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>
+            Crear Primer Proyecto
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add animation to stat cards
+    const statCards = document.querySelectorAll('.stat-card');
+    statCards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+        card.classList.add('fade-in-up');
+    });
+    
+    // Add animation to other elements
+    const otherElements = document.querySelectorAll('.chart-card, .recent-activity, .projects-table, .measurement-types');
+    otherElements.forEach((element, index) => {
+        element.style.animationDelay = `${(index + statCards.length) * 0.1}s`;
+        element.classList.add('fade-in-up');
+    });
+    
+    // Add hover effects to table rows
+    const tableRows = document.querySelectorAll('.table tbody tr');
+    tableRows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateX(4px)';
+        });
+        
+        row.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateX(0)';
+        });
+    });
+    
+    // Add click effects to type items
+    const typeItems = document.querySelectorAll('.type-item');
+    typeItems.forEach(item => {
+        item.addEventListener('click', function() {
+            // Add visual feedback
+            this.style.background = 'var(--primary)';
+            this.style.color = 'white';
+            
+            setTimeout(() => {
+                this.style.background = 'var(--bg-tertiary)';
+                this.style.color = 'var(--text-primary)';
+            }, 200);
+        });
+    });
+});
+</script>
+{% endblock %}

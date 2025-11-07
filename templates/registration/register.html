@@ -1,0 +1,64 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h4>Registro de Usuario</h4>
+        </div>
+        <div class="card-body">
+          <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="mb-3">
+              <label for="id_username" class="form-label">Usuario</label>
+              {{ form.username }}
+              {{ form.username.errors }}
+            </div>
+
+            <div class="row">
+              <div class="col">
+                <label for="id_first_name" class="form-label">Nombre</label>
+                {{ form.first_name }}
+                {{ form.first_name.errors }}
+              </div>
+              <div class="col">
+                <label for="id_last_name" class="form-label">Apellido</label>
+                {{ form.last_name }}
+                {{ form.last_name.errors }}
+              </div>
+            </div>
+
+            <div class="mb-3 mt-3">
+              <label for="id_email" class="form-label">Correo electrónico</label>
+              {{ form.email }}
+              {{ form.email.errors }}
+            </div>
+
+            <div class="mb-3">
+              <label for="id_password" class="form-label">Contraseña</label>
+              {{ form.password }}
+              {{ form.password.errors }}
+            </div>
+
+            <div class="mb-3">
+              <label for="id_confirm_password" class="form-label">Confirmar contraseña</label>
+              {{ form.confirm_password }}
+              {{ form.confirm_password.errors }}
+            </div>
+
+            <button type="submit" class="btn btn-primary">Registrarme</button>
+            <a class="btn btn-link" href="{% url 'login' %}">¿Ya tienes cuenta? Inicia sesión</a>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

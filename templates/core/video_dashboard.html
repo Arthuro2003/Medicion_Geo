@@ -1,0 +1,205 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Video en Tiempo Real - {{ project.name }}{% endblock %}
+
+{% block extra_css %}
+  <style>
+      .video-card {
+          transition: transform 0.2s;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          color: var(--text-primary);
+      }
+
+      .video-card:hover {
+          transform: translateY(-2px);
+      }
+
+      .session-status {
+          font-size: 0.8rem;
+      }
+
+      .session-active {
+          color: var(--success);
+      }
+
+      .session-inactive {
+          color: var(--text-secondary);
+      }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h1 class="h3 mb-1">Video en Tiempo Real</h1>
+            <p class="text-muted mb-0">Proyecto: {{ project.name }}</p>
+          </div>
+          <div>
+            <a href="{% url 'core:project_detail' project.pk %}" class="btn btn-outline-secondary me-2">
+              <i class="fas fa-arrow-left"></i> Volver al Proyecto
+            </a>
+            <a href="{% url 'core:start_video_session' project.pk %}" class="btn btn-primary">
+              <i class="fas fa-video"></i> Nueva Sesión
+            </a>
+          </div>
+        </div>
+
+        <!-- Active Session Alert -->
+        {% if active_session %}
+          <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-video me-2"></i>
+            <strong>Sesión Activa:</strong> {{ active_session.name }}
+            <div class="mt-2">
+              <a href="{% url 'core:video_stream' project.pk active_session.pk %}" class="btn btn-sm btn-success me-2">
+                <i class="fas fa-play"></i> Continuar Sesión
+              </a>
+              <a href="{% url 'core:stop_video_session' project.pk active_session.pk %}"
+                 class="btn btn-sm btn-outline-danger">
+                <i class="fas fa-stop"></i> Terminar Sesión
+              </a>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endif %}
+
+        <!-- Video Sessions Grid -->
+        <div class="row">
+          {% for session in video_sessions %}
+            <div class="col-md-6 col-lg-4 mb-4">
+              <div class="card video-card h-100">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="card-title mb-0">{{ session.name }}</h5>
+                    <span class="badge {% if session.is_active %}bg-success{% else %}bg-secondary{% endif %} session-status">
+                  {% if session.is_active %}Activa{% else %}Terminada{% endif %}
+                </span>
+                  </div>
+
+                  <div class="mb-3">
+                    <small class="text-muted">
+                      <i class="fas fa-camera me-1"></i> Cámara {{ session.camera_index }}
+                    </small>
+                    <br>
+                    <small class="text-muted">
+                      <i class="fas fa-clock me-1"></i>
+                      Iniciada: {{ session.started_at|date:"d/m/Y H:i" }}
+                    </small>
+                    {% if session.ended_at %}
+                      <br>
+                      <small class="text-muted">
+                        <i class="fas fa-stop-circle me-1"></i>
+                        Terminada: {{ session.ended_at|date:"d/m/Y H:i" }}
+                      </small>
+                    {% endif %}
+                  </div>
+
+                  <div class="mb-3">
+                <span class="badge {% if session.is_calibrated %}bg-info{% else %}bg-warning{% endif %}">
+                  {% if session.is_calibrated %}
+                    <i class="fas fa-check-circle"></i> Calibrada
+                  {% else %}
+                    <i class="fas fa-exclamation-triangle"></i> Sin Calibrar
+                  {% endif %}
+                </span>
+                  </div>
+
+                  <div class="d-flex gap-2">
+                    {% if session.is_active %}
+                      <a href="{% url 'core:video_stream' project.pk session.pk %}"
+                         class="btn btn-primary btn-sm flex-fill">
+                        <i class="fas fa-play"></i> Continuar
+                      </a>
+                      <a href="{% url 'core:stop_video_session' project.pk session.pk %}"
+                         class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-stop"></i>
+                      </a>
+                    {% else %}
+                      <a href="{% url 'core:video_session_detail' project.pk session.pk %}"
+                         class="btn btn-outline-primary btn-sm flex-fill">
+                        <i class="fas fa-eye"></i> Ver Detalles
+                      </a>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% empty %}
+            <div class="col-12">
+              <div class="text-center py-5">
+                <i class="fas fa-video fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No hay sesiones de video</h4>
+                <p class="text-muted">Inicia tu primera sesión de video para comenzar a medir en tiempo real.</p>
+                <a href="{% url 'core:start_video_session' project.pk %}" class="btn btn-primary">
+                  <i class="fas fa-video"></i> Crear Primera Sesión
+                </a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="row mt-4">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header">
+                <h5 class="mb-0">Acciones Rápidas</h5>
+              </div>
+              <div class="card-body text-center">
+                <div class="d-flex flex-wrap justify-content-center gap-3">
+
+                  <a href="{% url 'core:start_video_session' project.pk %}"
+                     class="btn btn-outline-primary d-flex align-items-center">
+                    <i class="fas fa-video me-2"></i>Nueva Sesión de Video
+                  </a>
+
+                  <a href="{% url 'core:project_detail' project.pk %}"
+                     class="btn btn-outline-secondary d-flex align-items-center">
+                    <i class="fas fa-images me-2"></i>Ver Imágenes del Proyecto
+                  </a>
+
+                  <a href="{% url 'core:video_sessions_report' project.pk %}?format=json"
+                     class="btn btn-outline-success d-flex align-items-center">
+                    <i class="fas fa-file-export me-2"></i>Descargar JSON de Sesiones
+                  </a>
+
+                  <a href="{% url 'core:video_sessions_pdf_report' project.pk %}"
+                     class="btn btn-outline-danger d-flex align-items-center">
+                    <i class="fas fa-file-pdf me-2"></i> Descargar PDF de las Sesiones
+                  </a>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    // Auto-refresh active sessions
+    {% if active_session %}
+      setInterval(function () {
+        // Check if session is still active
+        fetch('{% url "core:video_stream" project.pk active_session.pk %}')
+          .then(response => {
+            if (!response.ok) {
+              location.reload();
+            }
+          })
+          .catch(() => {
+            location.reload();
+          });
+      }, 30000); // Check every 30 seconds
+    {% endif %}
+  </script>
+{% endblock %}

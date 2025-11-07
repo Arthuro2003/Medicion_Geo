@@ -1,0 +1,2335 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ image.name }} - Medición Geométrica{% endblock %}
+
+{% block page_title %}{{ image.name }}{% endblock %}
+
+{% block breadcrumb %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+      <li class="breadcrumb-item"><a
+              href="{% url 'core:project_detail' image.project.pk %}">{{ image.project.name }}</a></li>
+      <li class="breadcrumb-item active">{{ image.name }}</li>
+    </ol>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <div class="row">
+    <!-- Image Canvas Column -->
+    <div class="col-lg-8 mb-4">
+      <div class="card">
+        <div class="card-header">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="mb-0">
+                <i class="bi bi-image me-2"></i>{{ image.name }}
+                {% if image.is_calibrated %}
+                  <span id="headerCalibrationBadge" class="badge bg-success ms-2">
+                                <i class="bi bi-check-circle me-1"></i>Calibrada
+                            </span>
+                {% else %}
+                  <span id="headerCalibrationBadge" class="badge bg-warning ms-2">
+                                <i class="bi bi-exclamation-circle me-1"></i>Sin calibrar
+                            </span>
+                {% endif %}
+              </h5>
+              <small class="text-white-50">
+                Dimensiones: {{ image.width }} × {{ image.height }} px
+                {% if image.is_calibrated %} | Unidad: {{ image.calibration_unit }}{% endif %}
+              </small>
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="canvas-container position-relative" style="min-height: 500px; overflow: auto;">
+            <!-- Main canvas -->
+            <canvas id="imageCanvas"
+                    style="cursor: crosshair; display: block; margin: 0 auto;"
+                    data-image-url="{{ image.image.url }}"
+                    data-image-width="{{ image.width }}"
+                    data-image-height="{{ image.height }}"
+                    data-calibrated="{{ image.is_calibrated|yesno:'true,false' }}"
+                    data-scale-factor="{{ image.scale_factor|default:'' }}"
+                    data-calibration-unit="{{ image.calibration_unit|default:'px' }}">
+            </canvas>
+
+            <!-- Tool indicators -->
+            <div class="position-absolute top-0 start-0 m-3">
+              <div id="currentTool" class="badge bg-primary fs-6" style="display: none;">
+                <i class="bi bi-cursor me-1"></i>
+                <span id="toolName">Seleccionar</span>
+              </div>
+            </div>
+
+            <!-- Coordinates display -->
+            <div class="position-absolute top-0 end-0 m-3">
+              <div id="coordinates" class="badge bg-secondary fs-6">
+                X: 0, Y: 0
+              </div>
+            </div>
+
+            <!-- Loading overlay for image -->
+            <div id="imageLoading" class="position-absolute top-50 start-50 translate-middle">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando imagen...</span>
+              </div>
+            </div>
+
+            <!-- Measurement info panel -->
+            <div id="measurementInfo" class="measurement-info">
+              <h6><i class="bi bi-rulers me-1"></i>Medición Actual</h6>
+              <div class="unit-row">
+                <span class="unit-label">Píxeles:</span>
+                <span class="unit-value" id="pixelValue">0 px</span>
+              </div>
+              <div class="unit-row">
+                <span class="unit-label">Milímetros:</span>
+                <span class="unit-value" id="mmValue">0 mm</span>
+              </div>
+              <div class="unit-row">
+                <span class="unit-label">Centímetros:</span>
+                <span class="unit-value" id="cmValue">0 cm</span>
+              </div>
+              <div class="unit-row">
+                <span class="unit-label">Metros:</span>
+                <span class="unit-value" id="mValue">0 m</span>
+              </div>
+              <div class="unit-row">
+                <span class="unit-label">Pulgadas:</span>
+                <span class="unit-value" id="inValue">0 in</span>
+              </div>
+              <div class="unit-row">
+                <span class="unit-label">Pies:</span>
+                <span class="unit-value" id="ftValue">0 ft</span>
+              </div>
+              <div class="unit-row">
+                <span class="unit-label">Hectáreas:</span>
+                <span class="unit-value" id="haValue">0 ha</span>
+              </div>
+              <div class="unit-row">
+                <span class="unit-label">Acres:</span>
+                <span class="unit-value" id="acValue">0 ac</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tools and Results Column -->
+    <div class="col-lg-4">
+      <!-- Image Info -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h6 class="mb-0">
+            <i class="bi bi-info-circle me-2"></i>Información
+          </h6>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm mb-0">
+            <tr>
+              <td>Proyecto:</td>
+              <td><a href="{% url 'core:project_detail' image.project.pk %}">{{ image.project.name }}</a></td>
+            </tr>
+            <tr>
+              <td>Dimensiones:</td>
+              <td>{{ image.width }} × {{ image.height }} px</td>
+            </tr>
+            <tr>
+              <td>Estado:</td>
+              <td id="imageCalibrationStatus">
+                {% if image.is_calibrated %}
+                  <span class="text-success">
+                                <i class="bi bi-check-circle me-1"></i>Calibrada ({{ image.calibration_unit }})
+                            </span>
+                {% else %}
+                  <span class="text-warning">
+                                <i class="bi bi-exclamation-circle me-1"></i>Sin calibrar
+                            </span>
+                {% endif %}
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- Detection Controls -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-bounding-box-circles me-2"></i>Detección y Medición</h6>
+        </div>
+        <div class="card-body">
+          <p>Seleccione una opción de medición:</p>
+          <div class="d-flex justify-content-center mb-3">
+            <div class="btn-group" role="group" aria-label="Report actions">
+              <button id="previewPdfBtn" class="btn btn-outline-primary">Vista previa PDF</button>
+              <button id="downloadExcelBtn" class="btn btn-outline-success">Descargar Excel</button>
+            </div>
+          </div>
+          <div class="d-flex flex-column gap-2">
+            <button id="runDetectionBtn" class="btn btn-primary w-100">Detección Automática</button>
+            <button id="startManualMeasureBtn" class="btn btn-info w-100">
+              <i class="bi bi-rulers me-1"></i>Medición Manual
+            </button>
+          </div>
+          <hr>
+          <div id="detectionResults">
+            <h6>Objetos detectados</h6>
+            <div id="objectsList">No se ha realizado la detección.</div>
+          </div>
+
+          <!-- Nueva sección para medidas manuales -->
+          <div id="manualMeasurementsSection" class="mt-4">
+            <h6><i class="bi bi-rulers me-2"></i>Medidas Manuales</h6>
+            <div id="manualMeasurementsList" class="list-group">
+              <!-- Las medidas manuales se agregarán aquí dinámicamente -->
+              <div class="text-muted small">No hay medidas manuales registradas.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+{% endblock %}
+
+{% block extra_css %}
+  <style>
+      #imageCanvas {
+          border: 1px solid #dee2e6;
+          background: #f8f9fa;
+          transition: cursor 0.3s;
+      }
+
+      .canvas-container {
+          background: linear-gradient(45deg, #f8f9fa 25%, transparent 25%),
+          linear-gradient(-45deg, #f8f9fa 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #f8f9fa 75%),
+          linear-gradient(-45deg, transparent 75%, #f8f9fa 75%);
+          background-size: 20px 20px;
+          background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+      }
+
+      #measurementTooltip {
+          position: fixed;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          font-size: 14px;
+          border-radius: 4px;
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+          z-index: 9999;
+          pointer-events: none;
+      }
+
+      /* Canvas styles */
+      #imageCanvas {
+          border: 1px solid #dee2e6;
+          background: #f8f9fa;
+      }
+
+      .shape-point {
+          position: absolute;
+          width: 8px;
+          height: 8px;
+          background: #007bff;
+          border: 2px solid white;
+          border-radius: 50%;
+          transform: translate(-50%, -50%);
+          cursor: pointer;
+          z-index: 100;
+      }
+
+      .calibration-point {
+          background: #28a745;
+      }
+
+      .measurement-point {
+          background: #dc3545;
+      }
+
+      /* Unit conversion display */
+      .unit-display {
+          position: absolute;
+          background: rgba(0, 0, 0, 0.8);
+          color: white;
+          padding: 2px 6px;
+          border-radius: 3px;
+          font-size: 12px;
+          pointer-events: none;
+          z-index: 50;
+      }
+
+      /* Measurement info panel */
+      .measurement-info {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          background: rgba(255, 255, 255, 0.95);
+          border: 1px solid #dee2e6;
+          border-radius: 5px;
+          padding: 10px;
+          min-width: 200px;
+          z-index: 20;
+          display: none;
+      }
+
+      .measurement-info h6 {
+          margin-bottom: 5px;
+          color: #495057;
+      }
+
+      .measurement-info .unit-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 3px;
+          font-size: 12px;
+      }
+
+      .measurement-info .unit-row .unit-label {
+          color: #6c757d;
+      }
+
+      .measurement-info .unit-row .unit-value {
+          font-weight: bold;
+          color: #495057;
+      }
+  </style>
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    // User preferred unit (from server-side preferences)
+    const USER_PREFERRED_UNIT = '{{ user_preferences.default_unit|default:"cm" }}';
+    // Image calibration unit (original unit used for this image)
+    // Use let so the value can be updated at runtime when auto-calibration occurs
+    let IMAGE_CALIBRATION_UNIT = '{{ image.calibration_unit|default:"cm" }}';
+    // Canonical ArUco real side in cm (server-side logic assumes 5.0 cm)
+    const ARUCO_REAL_CM = 5.0;
+
+    // Insertar variable IMAGE_ID para usar en las peticiones AJAX
+    const IMAGE_ID = '{{ image.pk }}';
+
+    // Map internal shape types / detector labels to user-friendly Spanish names
+    const TYPE_DISPLAY_MAP = {
+      'rectangle': 'Rectángulo',
+      'circle': 'Círculo',
+      'triangle': 'Triángulo',
+      'polygon': 'Objeto',
+      'line': 'Línea',
+      'point': 'Punto'
+    };
+
+    function shapeDisplayName(typeOrLabel) {
+      if (!typeOrLabel) return null;
+      const raw = String(typeOrLabel).trim();
+      const t = raw.toLowerCase();
+
+      // Handle common detector labels in Spanish/English and fallback to map
+      if (t.startsWith('círc') || t.startsWith('circul') || t.startsWith('circ')) return 'Círculo';
+      if (t.startsWith('tri')) return 'Triángulo';
+      if (t.startsWith('rect') || t.startsWith('cuadr')) return 'Rectángulo';
+      if (t.startsWith('pol') || t.startsWith('poly')) return 'Objeto';
+      if (t.startsWith('obj')) return 'Objeto';
+
+      return TYPE_DISPLAY_MAP[t] || raw; // preserve original label if unknown
+    }
+
+    // Conversion factors to meters for linear units
+    const UNIT_TO_M = {
+      'mm': 0.001,
+      'cm': 0.01,
+      'm': 1.0,
+      'in': 0.0254,
+      'ft': 0.3048,
+      'px': null // pixels cannot be converted without scale
+    };
+
+    function convertLength(value, fromUnit, toUnit) {
+      if (value == null) return null;
+      // If either unit is pixels, we cannot convert here (requires scale)
+      if (fromUnit === 'px' || toUnit === 'px') return value;
+      const f = UNIT_TO_M[fromUnit];
+      const t = UNIT_TO_M[toUnit];
+      if (!f || !t) return value; // unknown units
+      // value (in fromUnit) -> meters -> toUnit
+      return (value * f) / t;
+    }
+
+    function convertArea(value, fromUnit, toUnit) {
+      if (value == null) return null;
+      if (fromUnit === 'px' || toUnit === 'px') return value;
+      const f = UNIT_TO_M[fromUnit];
+      const t = UNIT_TO_M[toUnit];
+      if (!f || !t) return value;
+      const ratio = (f / t);
+      return value * (ratio * ratio);
+    }
+
+    // Report buttons wiring
+    document.addEventListener('DOMContentLoaded', function () {
+      const imagePk = '{{ image.pk }}';
+      const previewBtn = document.getElementById('previewPdfBtn');
+      const downloadExcelBtn = document.getElementById('downloadExcelBtn');
+
+      if (previewBtn) {
+        previewBtn.addEventListener('click', function () {
+          const url = '{% url "core:preview_image_pdf" "00000000-0000-0000-0000-000000000000" %}'.replace('00000000-0000-0000-0000-000000000000', imagePk);
+          window.open(url, '_blank');
+        });
+      }
+
+      if (downloadExcelBtn) {
+        downloadExcelBtn.addEventListener('click', function () {
+          const url = '{% url "core:download_image_excel" "00000000-0000-0000-0000-000000000000" %}'.replace('00000000-0000-0000-0000-000000000000', imagePk);
+          // Direct navigation triggers download
+          window.location.href = url;
+        });
+      }
+    });
+
+    class ImageMeasurementTool {
+      constructor(canvasId, imageUrl, imageWidth, imageHeight) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.imageUrl = imageUrl;
+        this.imageWidth = imageWidth;
+        this.imageHeight = imageHeight;
+        this.image = new Image();
+        this.scale = 1;
+        this.offsetX = 0;
+        this.offsetY = 0;
+        // No rulers needed
+        // Tool states
+        this.currentTool = 'select';
+        this.isDrawing = false;
+        this.points = [];
+        this.calibrationPoints = [];
+        this.shapes = [];
+        this.measurements = [];
+        // Unit conversion
+        this.scaleFactor = null; // pixels per unit
+        this.calibrationUnit = 'px';
+        this.isCalibrated = false;
+        // Touch device detection
+        this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        this.init();
+      }
+
+      init() {
+        this.setupCanvas();
+        this.loadImage();
+        this.bindEvents();
+        this.loadExistingData();
+      }
+
+      setupCanvas() {
+        const container = this.canvas.parentElement;
+        const containerWidth = container.clientWidth;
+        const containerHeight = Math.max(500, container.clientHeight);
+        // Calculate scale to fit image
+        const scaleX = containerWidth / this.imageWidth;
+        const scaleY = containerHeight / this.imageHeight;
+        this.scale = Math.min(scaleX, scaleY, 1);
+        this.canvas.width = this.imageWidth * this.scale;
+        this.canvas.height = this.imageHeight * this.scale;
+        // Make CSS size match the backing bitmap so getBoundingClientRect -> coordinates are accurate
+        this.canvas.style.width = `${this.canvas.width}px`;
+        this.canvas.style.height = `${this.canvas.height}px`;
+        this.canvas.style.maxWidth = '100%';
+      }
+
+      loadImage() {
+        document.getElementById('imageLoading').style.display = 'block';
+        this.image.onload = () => {
+          this.draw();
+          document.getElementById('imageLoading').style.display = 'none';
+          // Verificar ArUco y calibración solo después de que la imagen se cargue
+          this.checkCalibrationStatus();
+        };
+        this.image.onerror = () => {
+          console.error('Error loading image');
+          document.getElementById('imageLoading').style.display = 'none';
+          // Mostrar error de carga
+          showError('Error al cargar la imagen');
+        };
+        this.image.src = this.imageUrl;
+      }
+
+      async checkCalibrationStatus() {
+        try {
+          const imagePk = '{{ image.pk }}';
+          const runBtn = document.getElementById('runDetectionBtn');
+          const manualBtn = document.getElementById('startManualMeasureBtn');
+          // Los botones empiezan habilitados
+          if (runBtn) runBtn.disabled = false;
+          if (manualBtn) manualBtn.disabled = false;
+          // Verificar si tiene ArUco solo para información
+          const arucoResponse = await fetch(`/api/images/${imagePk}/aruco-check/`, {
+            credentials: 'same-origin'
+          });
+          const arucoStatus = await arucoResponse.json();
+          // Actualizar UI según estado inicial
+          this.updateCalibrationUI(false);
+          // Si hay ArUco, almacenar datos para uso posterior
+          if (arucoStatus && arucoStatus.aruco_found) {
+            window.detectedArucoSidePx = arucoStatus.side_px;
+            window.detectedArucoIds = arucoStatus.ids || [];
+          }
+        } catch (error) {
+          // console.error('Error verificando estado de calibración:', error);
+          // showError('Error al verificar el estado de calibración');
+        }
+      }
+
+      updateCalibrationUI(isCalibrated) {
+        // Actualizar badges y estados
+        const statusCell = document.getElementById('imageCalibrationStatus');
+        const headerBadge = document.getElementById('headerCalibrationBadge');
+        if (isCalibrated) {
+          if (statusCell) {
+            statusCell.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>Calibrada (${this.calibrationUnit})</span>`;
+          }
+          if (headerBadge) {
+            headerBadge.className = 'badge bg-success ms-2';
+            headerBadge.innerHTML = '<i class="bi bi-check-circle me-1"></i>Calibrada';
+          }
+        } else {
+          if (statusCell) {
+            statusCell.innerHTML = `<span class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>Sin calibrar</span>`;
+          }
+          if (headerBadge) {
+            headerBadge.className = 'badge bg-warning ms-2';
+            headerBadge.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Sin calibrar';
+          }
+        }
+      }
+
+      bindEvents() {
+        // Mouse events
+        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+        this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+        // Touch events for mobile - only add if touch device detected
+        if (this.isTouchDevice) {
+          this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), {passive: false});
+          this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), {passive: false});
+          this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), {passive: true});
+        }
+        // Prevent context menu
+        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+      }
+
+      getMousePos(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        let clientX, clientY;
+        // Handle both mouse and touch events
+        if (e.touches && e.touches.length > 0) {
+          clientX = e.touches[0].clientX;
+          clientY = e.touches[0].clientY;
+        } else {
+          clientX = e.clientX;
+          clientY = e.clientY;
+        }
+        return {
+          x: (clientX - rect.left) / this.scale,
+          y: (clientY - rect.top) / this.scale
+        };
+      }
+
+      handleMouseMove(e) {
+        const pos = this.getMousePos(e);
+        this.updateCoordinates(pos.x, pos.y);
+        if (this.isDrawing && this.currentTool === 'polygon') {
+          this.draw();
+          this.drawPreviewLine(pos);
+        }
+      }
+
+      handleMouseDown(e) {
+        const pos = this.getMousePos(e);
+        switch (this.currentTool) {
+          case 'calibration':
+            this.addCalibrationPoint(pos);
+            break;
+          case 'distance':
+            this.addMeasurementPoint(pos);
+            break;
+          case 'rectangle':
+          case 'circle':
+          case 'triangle':
+          case 'polygon':
+            this.addShapePoint(pos);
+            break;
+        }
+      }
+
+      handleMouseUp(e) {
+        if (this.currentTool === 'rectangle' && this.points.length === 2) {
+          this.finishRectangle();
+        }
+      }
+
+      handleTouchStart(e) {
+        e.preventDefault();
+        this.handleMouseDown(e);
+      }
+
+      handleTouchMove(e) {
+        e.preventDefault();
+        this.handleMouseMove(e);
+      }
+
+      handleTouchEnd(e) {
+        // No need to preventDefault for touchend as it doesn't block scrolling
+        this.handleMouseUp(e);
+      }
+
+      updateCoordinates(x, y) {
+        document.getElementById('coordinates').textContent = `X: ${Math.round(x)}, Y: ${Math.round(y)}`;
+      }
+
+      addCalibrationPoint(pos) {
+        if (this.calibrationPoints.length < 2) {
+          this.calibrationPoints.push(pos);
+          this.draw();
+          this.updateCalibrationUI();
+          if (this.calibrationPoints.length === 2) {
+            document.getElementById('calibrateBtn').disabled = false;
+          }
+        }
+      }
+
+      addMeasurementPoint(pos) {
+        if (this.points.length < 2) {
+          this.points.push(pos);
+          this.draw();
+          if (this.points.length === 2) {
+            this.completeMeasurement();
+          }
+        }
+      }
+
+      addShapePoint(pos) {
+        this.points.push(pos);
+        switch (this.currentTool) {
+          case 'rectangle':
+            if (this.points.length === 2) {
+              this.finishRectangle();
+            }
+            break;
+          case 'circle':
+            if (this.points.length === 2) {
+              this.finishShape();
+            }
+            break;
+          case 'triangle':
+            if (this.points.length === 3) {
+              this.finishShape();
+            }
+            break;
+          case 'polygon':
+            if (this.points.length >= 3 && this.isCloseToStart(pos)) {
+              this.finishShape();
+            }
+            break;
+        }
+        this.draw();
+      }
+
+      finishRectangle() {
+        if (this.points.length === 2) {
+          const [p1, p2] = this.points;
+          this.points = [
+            p1,
+            {x: p2.x, y: p1.y},
+            p2,
+            {x: p1.x, y: p2.y}
+          ];
+          this.finishShape();
+        }
+      }
+
+      isCloseToStart(pos) {
+        if (this.points.length < 3) return false;
+        const start = this.points[0];
+        const distance = Math.sqrt((pos.x - start.x) ** 2 + (pos.y - start.y) ** 2);
+        return distance < 10;
+      }
+
+      finishShape() {
+        if (this.points.length >= 2) {
+          // Validate points based on current tool
+          let validPoints = this.points;
+          if (this.currentTool === 'rectangle' && this.points.length === 2) {
+            // For rectangle, we already have 4 points from finishRectangle()
+            validPoints = this.points;
+          } else if (this.currentTool === 'circle' && this.points.length === 2) {
+            // For circle, we need exactly 2 points
+            validPoints = this.points;
+          } else if (this.currentTool === 'triangle' && this.points.length === 3) {
+            // For triangle, we need exactly 3 points
+            validPoints = this.points;
+          } else if (this.currentTool === 'polygon' && this.points.length >= 3) {
+            // For polygon, we need at least 3 points
+            validPoints = this.points;
+          } else {
+            alert('Número insuficiente de puntos para esta forma');
+            return;
+          }
+          document.getElementById('shapePointsData').value = JSON.stringify(validPoints);
+          const modal = new bootstrap.Modal(document.getElementById('shapeModal'));
+          modal.show();
+        }
+      }
+
+      completeMeasurement() {
+        if (this.points.length === 2) {
+          const distance = this.calculateDistance(this.points[0], this.points[1]);
+          document.getElementById('measurementValue').value = distance;
+          document.getElementById('measurementPointsData').value = JSON.stringify(this.points);
+          const modal = new bootstrap.Modal(document.getElementById('measurementModal'));
+          modal.show();
+        }
+      }
+
+      calculateDistance(p1, p2) {
+        return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
+      }
+
+      updateCalibrationUI() {
+        const pointsText = this.calibrationPoints.length === 0 ? 'Ninguno' :
+          this.calibrationPoints.length === 1 ? '1 punto seleccionado - Seleccione el segundo punto' :
+            '2 puntos seleccionados - Listo para calibrar';
+        document.getElementById('calibrationPoints').textContent = pointsText;
+        // Calculate distance between points for reference
+        if (this.calibrationPoints.length === 2) {
+          const distance = this.calculateDistance(this.calibrationPoints[0], this.calibrationPoints[1]);
+          const distanceText = `Distancia en píxeles: ${distance.toFixed(1)} px`;
+          document.getElementById('calibrationPoints').innerHTML = pointsText + '<br><small class="text-muted">' + distanceText + '</small>';
+        }
+        // Update hidden fields
+        if (this.calibrationPoints.length >= 1) {
+          document.getElementById('point1_x').value = this.calibrationPoints[0].x;
+          document.getElementById('point1_y').value = this.calibrationPoints[0].y;
+        }
+        if (this.calibrationPoints.length >= 2) {
+          document.getElementById('point2_x').value = this.calibrationPoints[1].x;
+          document.getElementById('point2_y').value = this.calibrationPoints[1].y;
+        }
+      }
+
+      draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // Draw image
+        this.ctx.drawImage(this.image, 0, 0, this.canvas.width, this.canvas.height);
+        // Draw existing shapes
+        this.drawShapes();
+        // Draw current points
+        this.drawPoints();
+        // Draw calibration points
+        this.drawCalibrationPoints();
+      }
+
+      // Unit conversion methods
+      convertPixelsToUnits(pixels, targetUnit = null) {
+        if (!this.isCalibrated || !this.scaleFactor) {
+          return {
+            px: pixels,
+            mm: pixels * 0.264583, // Approximate conversion (1 inch = 96 pixels)
+            cm: pixels * 0.0264583,
+            m: pixels * 0.000264583,
+            in: pixels * 0.0104167,
+            ft: pixels * 0.000868056,
+            ha: (pixels * 0.000264583) ** 2 / 10000, // Approximate hectares
+            ac: (pixels * 0.000264583) ** 2 / 4046.86 // Approximate acres
+          };
+        }
+        const baseUnit = pixels / this.scaleFactor;
+        // Convert from calibration unit to all other units
+        const conversions = {
+          mm: {mm: 1, cm: 0.1, m: 0.001, in: 0.0393701, ft: 0.00328084},
+          cm: {mm: 10, cm: 1, m: 0.01, in: 0.393701, ft: 0.0328084},
+          m: {mm: 1000, cm: 100, m: 1, in: 39.3701, ft: 3.28084},
+          in: {mm: 25.4, cm: 2.54, m: 0.0254, in: 1, ft: 0.0833333},
+          ft: {mm: 304.8, cm: 30.48, m: 0.3048, in: 12, ft: 1}
+        };
+        const unitConversions = conversions[this.calibrationUnit] || conversions.mm;
+        // For area measurements, we need to square the base unit
+        const areaBaseUnit = baseUnit ** 2;
+        return {
+          px: pixels,
+          mm: baseUnit * unitConversions.mm,
+          cm: baseUnit * unitConversions.cm,
+          m: baseUnit * unitConversions.m,
+          in: baseUnit * unitConversions.in,
+          ft: baseUnit * unitConversions.ft,
+          ha: areaBaseUnit * (unitConversions.m ** 2) / 10000, // Convert to hectares
+          ac: areaBaseUnit * (unitConversions.m ** 2) / 4046.86 // Convert to acres
+        };
+      }
+
+      updateMeasurementInfo(pixels) {
+        const infoBox = document.getElementById('measurementInfo');
+        if (!infoBox) return;
+        // Update pixels always
+        document.getElementById('pixelValue').textContent = `${pixels.toFixed(1)} px`;
+        // Determine source unit (from tool or global) and preferred unit
+        const sourceUnit = this.calibrationUnit || IMAGE_CALIBRATION_UNIT || 'cm';
+        const preferred = (typeof USER_PREFERRED_UNIT !== 'undefined') ? USER_PREFERRED_UNIT : 'cm';
+        // Compute value in source unit
+        let valueInSourceUnit = null;
+        if (this.scaleFactor) {
+          // scaleFactor: pixels per sourceUnit
+          valueInSourceUnit = pixels / this.scaleFactor;
+        } else {
+          // Fallback: use convertPixelsToUnits which returns a map
+          const fall = this.convertPixelsToUnits(pixels);
+          valueInSourceUnit = fall[sourceUnit] || fall.cm || pixels;
+        }
+        // Convert to a set of display units so the panel remains informative
+        const mmVal = convertLength(valueInSourceUnit, sourceUnit, 'mm');
+        const cmVal = convertLength(valueInSourceUnit, sourceUnit, 'cm');
+        const mVal = convertLength(valueInSourceUnit, sourceUnit, 'm');
+        const inVal = convertLength(valueInSourceUnit, sourceUnit, 'in');
+        const ftVal = convertLength(valueInSourceUnit, sourceUnit, 'ft');
+        document.getElementById('mmValue').textContent = `${mmVal !== null ? Number(mmVal).toFixed(2) : '--'} mm`;
+        document.getElementById('cmValue').textContent = `${cmVal !== null ? Number(cmVal).toFixed(2) : '--'} cm`;
+        document.getElementById('mValue').textContent = `${mVal !== null ? Number(mVal).toFixed(3) : '--'} m`;
+        document.getElementById('inValue').textContent = `${inVal !== null ? Number(inVal).toFixed(2) : '--'} in`;
+        document.getElementById('ftValue').textContent = `${ftVal !== null ? Number(ftVal).toFixed(3) : '--'} ft`;
+        // Area placeholders remain as before (approximate)
+        const areaConversions = this.convertPixelsToUnits(pixels);
+        document.getElementById('haValue').textContent = `${areaConversions.ha ? Number(areaConversions.ha).toFixed(4) : '--'} ha`;
+        document.getElementById('acValue').textContent = `${areaConversions.ac ? Number(areaConversions.ac).toFixed(4) : '--'} ac`;
+        // Additionally show the preferred unit prominently by updating the header of the panel
+        // (We keep the rows for backwards compatibility but the user will see preferred unit values above)
+        const preferredDisplay = convertLength(valueInSourceUnit, sourceUnit, preferred);
+        if (preferredDisplay !== null) {
+          // Insert/Update a small preferred value element
+          let prefEl = document.getElementById('preferredUnitDisplay');
+          if (!prefEl) {
+            prefEl = document.createElement('div');
+            prefEl.id = 'preferredUnitDisplay';
+            prefEl.style.fontWeight = '600';
+            prefEl.style.marginBottom = '6px';
+            infoBox.insertBefore(prefEl, infoBox.firstChild.nextSibling);
+          }
+          prefEl.textContent = `${preferred}: ${Number(preferredDisplay).toFixed(2)}`;
+        }
+        // Show measurement info panel
+        document.getElementById('measurementInfo').style.display = 'block';
+      }
+
+      hideMeasurementInfo() {
+        document.getElementById('measurementInfo').style.display = 'none';
+      }
+
+      drawPoints() {
+        this.ctx.fillStyle = '#dc3545';
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 2;
+        this.points.forEach((point, index) => {
+          this.ctx.beginPath();
+          this.ctx.arc(point.x * this.scale, point.y * this.scale, 4, 0, 2 * Math.PI);
+          this.ctx.fill();
+          this.ctx.stroke();
+          // Draw line for distance measurement
+          if (this.currentTool === 'distance' && index === 1) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.points[0].x * this.scale, this.points[0].y * this.scale);
+            this.ctx.lineTo(point.x * this.scale, point.y * this.scale);
+            this.ctx.strokeStyle = '#dc3545';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+            // Calculate and display distance
+            const distance = this.calculateDistance(this.points[0], this.points[1]);
+            this.updateMeasurementInfo(distance);
+            // Draw distance label
+            const midX = (this.points[0].x + this.points[1].x) / 2 * this.scale;
+            const midY = (this.points[0].y + this.points[1].y) / 2 * this.scale;
+            this.ctx.fillStyle = '#dc3545';
+            this.ctx.font = '12px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(`${distance.toFixed(1)} px`, midX, midY - 10);
+            this.ctx.fillStyle = '#dc3545';
+          }
+        });
+        // Draw polygon preview
+        if (this.currentTool === 'polygon' && this.points.length > 0) {
+          this.ctx.strokeStyle = '#007bff';
+          this.ctx.lineWidth = 2;
+          this.ctx.beginPath();
+          this.ctx.moveTo(this.points[0].x * this.scale, this.points[0].y * this.scale);
+          for (let i = 1; i < this.points.length; i++) {
+            this.ctx.lineTo(this.points[i].x * this.scale, this.points[i].y * this.scale);
+          }
+          if (this.points.length > 2) {
+            this.ctx.lineTo(this.points[0].x * this.scale, this.points[0].y * this.scale);
+          }
+          this.ctx.stroke();
+          // Calculate and display area for closed polygons
+          if (this.points.length >= 3) {
+            const area = this.calculatePolygonArea(this.points);
+            this.updateMeasurementInfo(area);
+          }
+        }
+      }
+
+      calculatePolygonArea(points) {
+        let area = 0;
+        const n = points.length;
+        for (let i = 0; i < n; i++) {
+          const j = (i + 1) % n;
+          area += points[i].x * points[j].y;
+          area -= points[j].x * points[i].y;
+        }
+        return Math.abs(area) / 2;
+      }
+
+      drawCalibrationPoints() {
+        this.ctx.fillStyle = '#28a745';
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 2;
+        this.calibrationPoints.forEach((point, index) => {
+          this.ctx.beginPath();
+          this.ctx.arc(point.x * this.scale, point.y * this.scale, 6, 0, 2 * Math.PI);
+          this.ctx.fill();
+          this.ctx.stroke();
+          // Draw number
+          this.ctx.fillStyle = '#ffffff';
+          this.ctx.font = '12px Arial';
+          this.ctx.textAlign = 'center';
+          this.ctx.fillText(index + 1, point.x * this.scale, point.y * this.scale + 4);
+          this.ctx.fillStyle = '#28a745';
+        });
+        // Draw line between calibration points
+        if (this.calibrationPoints.length === 2) {
+          this.ctx.beginPath();
+          this.ctx.moveTo(this.calibrationPoints[0].x * this.scale, this.calibrationPoints[0].y * this.scale);
+          this.ctx.lineTo(this.calibrationPoints[1].x * this.scale, this.calibrationPoints[1].y * this.scale);
+          this.ctx.strokeStyle = '#28a745';
+          this.ctx.lineWidth = 3;
+          this.ctx.setLineDash([5, 5]);
+          this.ctx.stroke();
+          this.ctx.setLineDash([]);
+        }
+      }
+
+      drawShapes() {
+        // Draw persisted shapes (auto-detections). Skip shapes that were
+        // created only to store manual measurements to avoid rendering a
+        // duplicate (red) line on top of the green manual measurement visuals.
+        const skipIds = this.manualMeasurementShapeIds || new Set();
+        (this.shapes || []).forEach(shape => {
+          try {
+            if (skipIds.has(String(shape.id))) return;
+          } catch (e) { /* ignore malformed shape ids */
+          }
+          this.drawShape(shape);
+        });
+      }
+
+      drawShape(shape) {
+        const points = shape.points.map(p => ({
+          x: p.x * this.scale,
+          y: p.y * this.scale
+        }));
+        this.ctx.strokeStyle = shape.color || '#007bff';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        switch (shape.type) {
+          case 'line':
+            // Draw line
+            this.ctx.moveTo(points[0].x, points[0].y);
+            this.ctx.lineTo(points[1].x, points[1].y);
+            // Draw points at ends
+            this.ctx.save();
+            this.ctx.fillStyle = shape.color || '#00ff00';
+            this.ctx.beginPath();
+            this.ctx.arc(points[0].x, points[0].y, 4, 0, 2 * Math.PI);
+            this.ctx.arc(points[1].x, points[1].y, 4, 0, 2 * Math.PI);
+            this.ctx.fill();
+            this.ctx.restore();
+            // Draw measurement text if available
+            if (shape.properties && (shape.properties.distance_real !== undefined || shape.properties.distance_px !== undefined)) {
+              const midX = (points[0].x + points[1].x) / 2;
+              const midY = (points[0].y + points[1].y) / 2;
+              this.ctx.save();
+              this.ctx.font = '14px Arial';
+              this.ctx.fillStyle = shape.color || '#00ff00';
+              this.ctx.textAlign = 'center';
+              if (shape.properties.distance_real !== undefined) {
+                this.ctx.fillText(
+                  `${shape.properties.distance_real.toFixed(2)} ${shape.properties.unit || 'cm'}`,
+                  midX,
+                  midY - 10
+                );
+              } else {
+                this.ctx.fillText(
+                  `${shape.properties.distance_px.toFixed(1)} px`,
+                  midX,
+                  midY - 10
+                );
+              }
+              this.ctx.restore();
+            }
+            break;
+          case 'rectangle':
+            const [tl, tr, br, bl] = points;
+            this.ctx.moveTo(tl.x, tl.y);
+            this.ctx.lineTo(tr.x, tr.y);
+            this.ctx.lineTo(br.x, br.y);
+            this.ctx.lineTo(bl.x, bl.y);
+            this.ctx.closePath();
+            break;
+          case 'circle':
+            let center_scaled, radius_scaled;
+            if (shape.properties && shape.properties.center_px && shape.properties.radius_px) {
+              // Preferir datos de properties para círculos (más preciso y evita suposiciones sobre points)
+              const cx = shape.properties.center_px[0];
+              const cy = shape.properties.center_px[1];
+              center_scaled = {x: cx * this.scale, y: cy * this.scale};
+              radius_scaled = shape.properties.radius_px * this.scale;
+            } else if (points.length >= 2) {
+              // Fallback: asumir [centro, punto en el borde]
+              center_scaled = {x: points[0].x, y: points[0].y};
+              const edge_scaled = {x: points[1].x, y: points[1].y};
+              radius_scaled = Math.sqrt(
+                (edge_scaled.x - center_scaled.x) ** 2 + (edge_scaled.y - center_scaled.y) ** 2
+              );
+            } else if (points.length === 4) {
+              // Fallback: asumir bounding box, calcular centro y radio aproximado
+              const xs = points.map(p => p.x);
+              const ys = points.map(p => p.y);
+              const minX = Math.min(...xs), maxX = Math.max(...xs);
+              const minY = Math.min(...ys), maxY = Math.max(...ys);
+              center_scaled = {x: (minX + maxX) / 2, y: (minY + maxY) / 2};
+              radius_scaled = Math.min((maxX - minX) / 2, (maxY - minY) / 2);
+            } else if (shape.properties && shape.properties.diameter_px) {
+              // Fallback adicional si solo hay diámetro (raramente usado)
+              if (points.length >= 1) {
+                center_scaled = {x: points[0].x, y: points[0].y};
+                radius_scaled = (shape.properties.diameter_px / 2) * this.scale;
+              } else {
+                console.warn('Cannot draw circle: no center point available', shape);
+                return;
+              }
+            } else {
+              console.warn('Cannot draw circle: insufficient data', shape);
+              return;
+            }
+            this.ctx.arc(center_scaled.x, center_scaled.y, radius_scaled, 0, 2 * Math.PI);
+            break;
+          case 'triangle':
+          case 'polygon':
+            this.ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+              this.ctx.lineTo(points[i].x, points[i].y);
+            }
+            this.ctx.closePath();
+            break;
+        }
+        this.ctx.stroke();
+      }
+
+      drawPreviewLine(currentPos) {
+        if (this.points.length > 0) {
+          const lastPoint = this.points[this.points.length - 1];
+          this.ctx.strokeStyle = '#007bff';
+          this.ctx.lineWidth = 1;
+          this.ctx.setLineDash([5, 5]);
+          this.ctx.beginPath();
+          this.ctx.moveTo(lastPoint.x * this.scale, lastPoint.y * this.scale);
+          this.ctx.lineTo(currentPos.x * this.scale, currentPos.y * this.scale);
+          this.ctx.stroke();
+          this.ctx.setLineDash([]);
+        }
+      }
+
+      loadExistingData() {
+        // Load existing shapes and measurements from the server
+        return fetch(`/api/images/{{ image.pk }}/data/`)
+          .then(response => response.json())
+          .then(data => {
+            this.shapes = data.shapes || [];
+            this.measurements = data.measurements || [];
+            // Identificar mediciones manuales y configurarlas
+            const manualMeasurements = (data.measurements || []).filter(m =>
+              m.type === 'manual_distance' || m.is_manual === true
+            );
+            // Actualizar la lista global de mediciones manuales
+            window.manualMeasurements = manualMeasurements.map(m => {
+              const shape = (data.shapes || []).find(s => s.id === m.shape_id);
+              return {
+                id: m.id,
+                points: shape ? shape.points.slice(0, 2) : [],
+                pixel_distance: m.value_pixels,
+                value_real: m.value_real,
+                unit: m.unit,
+                name: m.name || `Distancia Manual ${manualMeasurements.indexOf(m) + 1}`
+              };
+            });
+            // Ensure calibration is properly set
+            if (data.image && data.image.is_calibrated) {
+              this.isCalibrated = true;
+              this.scaleFactor = data.image.scale_factor || (data.image.calibration_data && data.image.calibration_data.pixels_per_cm);
+              this.calibrationUnit = data.image.calibration_unit || 'cm';
+            }
+            // Prefer explicit scale: image.scale_factor then calibration_data.pixels_per_cm then detectedArucoSidePx
+            let scaleFactor = null;
+            let calibrationUnit = data.image && data.image.calibration_unit ? data.image.calibration_unit : IMAGE_CALIBRATION_UNIT;
+            if (data.image) {
+              if (data.image.scale_factor) scaleFactor = data.image.scale_factor;
+              if (!scaleFactor && data.image.calibration_data && data.image.calibration_data.pixels_per_cm) {
+                scaleFactor = data.image.calibration_data.pixels_per_cm;
+                calibrationUnit = data.image.calibration_data.unit || calibrationUnit;
+              }
+            }
+            if (!scaleFactor && window.detectedArucoSidePx) {
+              scaleFactor = window.detectedArucoSidePx / ARUCO_REAL_CM;
+              calibrationUnit = 'cm';
+            }
+            if (scaleFactor) {
+              this.isCalibrated = true;
+              this.scaleFactor = scaleFactor;
+              this.calibrationUnit = calibrationUnit;
+            }
+            // Build client-side manual measurements array from measurements+shapes
+            window.manualMeasurements = [];
+            try {
+              const shapesById = {};
+              (this.shapes || []).forEach(s => {
+                shapesById[s.id] = s;
+              });
+              // Collect all manual measurements with proper names
+              const manualMeasurements = (this.measurements || []).filter(m =>
+                m && (m.is_manual === true || m.type === 'manual_distance') && m.shape_id
+              );
+              // Track which persisted shapes correspond to manual measurements
+              // so we can skip drawing them as part of the persisted shapes
+              // layer (they are rendered separately in green by
+              // drawManualMeasurement()).
+              const manualShapeIds = new Set();
+              (this.measurements || []).forEach(m => {
+                // Treat as manual only when backend explicitly marked it as manual
+                // (m.is_manual === true) or when the measurement type is an
+                // explicit manual_distance. This prevents auto-detected
+                // distances (e.g. triangle sides) from being classified as
+                // manual measurements on the client.
+                if ((m.is_manual === true || m.type === 'manual_distance') && m.shape_id) {
+                  manualShapeIds.add(String(m.shape_id));
+                  const shape = shapesById[m.shape_id];
+                  if (shape && shape.points && shape.points.length >= 2) {
+                    window.manualMeasurements.push({
+                      id: m.id,
+                      points: shape.points.slice(0, 2),
+                      pixel_distance: m.value_pixels || calculateDistance(shape.points[0], shape.points[1]),
+                      value_real: m.value_real || null,
+                      unit: m.unit || this.calibrationUnit || IMAGE_CALIBRATION_UNIT
+                    });
+                  }
+                }
+              });
+              // Save on the instance for use by drawShapes()
+              this.manualMeasurementShapeIds = manualShapeIds;
+            } catch (err) {
+              console.warn('Error building manualMeasurements from server data:', err);
+            }
+            this.draw();
+            // Render persisted detections list in the sidebar (if any)
+            if (window.renderPersistedDetections) {
+              try {
+                window.renderPersistedDetections(data);
+              } catch (err) {
+                console.error('Error rendering persisted detections:', err);
+              }
+            }
+            // Render manual measurements panel and draw them on the canvas
+            try {
+              renderManualMeasurements();
+              drawManualMeasurement();
+            } catch (err) {
+              // Non-fatal
+            }
+          })
+          .catch(error => {
+            console.error('Error loading data:', error);
+            throw error;
+          });
+      }
+
+      setTool(tool) {
+        this.currentTool = tool;
+        this.points = [];
+        this.calibrationPoints = [];
+        // Hide measurement info panel
+        this.hideMeasurementInfo();
+        // Update UI
+        const toolElement = document.getElementById('currentTool');
+        const toolNameElement = document.getElementById('toolName');
+        toolElement.style.display = 'block';
+        switch (tool) {
+          case 'calibration':
+            toolNameElement.textContent = 'Calibración';
+            this.canvas.style.cursor = 'crosshair';
+            break;
+          case 'distance':
+            toolNameElement.textContent = 'Distancia';
+            this.canvas.style.cursor = 'crosshair';
+            break;
+          case 'rectangle':
+            toolNameElement.textContent = 'Rectángulo';
+            this.canvas.style.cursor = 'crosshair';
+            break;
+          case 'circle':
+            toolNameElement.textContent = 'Círculo';
+            this.canvas.style.cursor = 'crosshair';
+            break;
+          case 'triangle':
+            toolNameElement.textContent = 'Triángulo';
+            this.canvas.style.cursor = 'crosshair';
+            break;
+          case 'polygon':
+            toolNameElement.textContent = 'Polígono';
+            this.canvas.style.cursor = 'crosshair';
+            break;
+          default:
+            toolNameElement.textContent = 'Seleccionar';
+            this.canvas.style.cursor = 'default';
+            toolElement.style.display = 'none';
+        }
+        this.draw();
+      }
+
+      zoomIn() {
+        this.scale *= 1.2;
+        this.setupCanvas();
+        this.draw();
+      }
+
+      zoomOut() {
+        this.scale /= 1.2;
+        this.setupCanvas();
+        this.draw();
+      }
+
+      resetZoom() {
+        this.setupCanvas();
+        this.draw();
+      }
+    }
+
+    // Global variables
+    let measurementTool;
+    window.measurementTool = null;
+
+    // CSRF token is already available from base.html
+
+    // Utility function to show user-friendly error messages
+    // Helper functions for manual measurement
+    function calculateDistance(point1, point2) {
+      return Math.sqrt(Math.pow(point2.x - point1.x, 2) + Math.pow(point2.y - point1.y, 2));
+    }
+
+    // Función para renderizar la lista de medidas manuales
+    function renderManualMeasurements() {
+      const list = document.getElementById('manualMeasurementsList');
+      if (!list) return;
+
+      const measurements = window.manualMeasurements || [];
+
+      // Delegación de eventos: Añadimos un único listener al contenedor de la lista.
+      // Esto es más eficiente y funciona para elementos añadidos dinámicamente.
+      list.onclick = function (event) {
+        // Verificamos si el clic fue en un botón de eliminar o su ícono
+        const deleteButton = event.target.closest('.manual-measure-delete');
+        if (deleteButton) {
+          const measurementId = deleteButton.dataset.measurementId;
+          if (measurementId) {
+            // Pedimos confirmación al usuario antes de borrar
+            if (confirm('¿Estás seguro de que deseas eliminar esta medida?')) {
+              deleteManualMeasurementById(measurementId);
+            }
+          }
+        }
+      };
+
+      if (measurements.length === 0) {
+        list.innerHTML = '<div class="text-muted small">No hay medidas manuales registradas.</div>';
+        return;
+      }
+
+      list.innerHTML = ''; // Limpiamos la lista
+
+      measurements.forEach((measurement, index) => {
+        const item = document.createElement('div');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+        const realValue = measurement.value_real ? Number(measurement.value_real).toFixed(2) : 'N/A';
+        const unit = measurement.unit || 'cm';
+
+        item.innerHTML = `
+            <div>
+                <strong>Medida ${index + 1}:</strong>
+                <span class="ms-2">${realValue} ${unit}</span>
+            </div>
+            <button class="btn btn-sm btn-danger manual-measure-delete" data-measurement-id="${measurement.id}">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    // Función para eliminar una medida manual
+    async function deleteManualMeasurementById(measurementId) {
+      if (!measurementId) return;
+
+      try {
+        const response = await fetch(`/api/images/${IMAGE_ID}/manual-measurement/${measurementId}/`, {
+          method: 'DELETE',
+          headers: {
+            'X-CSRFToken': csrftoken
+          }
+        });
+
+        if (response.ok) {
+          // 1. Eliminar la medida del estado local (array de JavaScript)
+          window.manualMeasurements = window.manualMeasurements.filter(m => m.id !== measurementId);
+
+          // 2. Volver a renderizar la lista de la UI con el array actualizado
+          renderManualMeasurements();
+
+          // 3. Volver a dibujar el canvas para que la línea desaparezca
+          drawManualMeasurement();
+
+          showSuccessMessage('Medida eliminada correctamente');
+        } else {
+          const errorData = await response.json();
+          showError(errorData.message || 'Error al eliminar la medida.');
+        }
+      } catch (err) {
+        console.error('Error en la función deleteManualMeasurementById:', err);
+        showError('Ocurrió un error de red al intentar eliminar.');
+      }
+    }
+
+    function drawManualMeasurement(previewPoint = null) {
+      measurementTool.draw(); // Clear and redraw base image
+
+      // Draw all saved measurements first
+      if (window.manualMeasurements) {
+        window.manualMeasurements.forEach(measurement => {
+          const ctx = measurementTool.ctx;
+
+          // Dibujar la línea verde
+          ctx.beginPath();
+          ctx.strokeStyle = '#00ff00';  // Verde para mediciones guardadas
+          ctx.lineWidth = 2;
+
+          const p1 = measurement.points[0];
+          const p2 = measurement.points[1];
+
+          ctx.moveTo(p1.x * measurementTool.scale, p1.y * measurementTool.scale);
+          ctx.lineTo(p2.x * measurementTool.scale, p2.y * measurementTool.scale);
+          ctx.stroke();
+
+          // Draw points
+          ctx.beginPath();
+          ctx.fillStyle = '#00ff00';
+          ctx.arc(p1.x * measurementTool.scale, p1.y * measurementTool.scale, 4, 0, 2 * Math.PI);
+          ctx.arc(p2.x * measurementTool.scale, p2.y * measurementTool.scale, 4, 0, 2 * Math.PI);
+          ctx.fill();
+
+          // Draw measurement text
+          const midX = (p1.x + p2.x) / 2 * measurementTool.scale;
+          const midY = (p1.y + p2.y) / 2 * measurementTool.scale - 10;
+          ctx.font = '14px Arial';
+          ctx.fillStyle = '#00ff00';
+          ctx.textAlign = 'center';
+          const value = measurement.value_real || (measurement.pixel_distance / measurementTool.scaleFactor);
+          ctx.fillText(`${value.toFixed(2)} ${measurementTool.calibrationUnit || 'cm'}`, midX, midY);
+        });
+      }
+
+      // Draw current measurement
+      if (measurementPoints.length > 0) {
+        const ctx = measurementTool.ctx;
+        ctx.beginPath();
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 2;
+
+        // Draw first point
+        const p1 = measurementPoints[0];
+        ctx.arc(p1.x * measurementTool.scale, p1.y * measurementTool.scale, 4, 0, 2 * Math.PI);
+        ctx.fill();
+
+        if (previewPoint) {
+          // Draw preview line
+          ctx.beginPath();
+          ctx.moveTo(p1.x * measurementTool.scale, p1.y * measurementTool.scale);
+          ctx.lineTo(previewPoint.x * measurementTool.scale, previewPoint.y * measurementTool.scale);
+          ctx.stroke();
+
+          // Show real-time measurement
+          if (measurementTool.isCalibrated && measurementTool.scaleFactor) {
+            const pixelDist = calculateDistance(p1, previewPoint);
+            const realDist = pixelDist / measurementTool.scaleFactor;
+            const midX = (p1.x + previewPoint.x) / 2 * measurementTool.scale;
+            const midY = (p1.y + previewPoint.y) / 2 * measurementTool.scale - 10;
+
+            // Draw measurement text with background for better visibility
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Draw text background
+            const text = `${realDist.toFixed(2)} ${measurementTool.calibrationUnit || 'cm'}`;
+            const textWidth = ctx.measureText(text).width;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(midX - textWidth / 2 - 5, midY - 10, textWidth + 10, 20);
+
+            // Draw text
+            ctx.fillStyle = '#00ff00';
+            ctx.fillText(text, midX, midY);
+          }
+
+          // Show live measurement
+          const pixelDist = calculateDistance(p1, previewPoint);
+          if (measurementTool.isCalibrated && measurementTool.scaleFactor) {
+            const realDist = pixelDist / measurementTool.scaleFactor;
+            const unit = measurementTool.calibrationUnit || 'cm';
+
+            // Draw measurement text
+            const midX = (p1.x + previewPoint.x) / 2 * measurementTool.scale;
+            const midY = (p1.y + previewPoint.y) / 2 * measurementTool.scale;
+
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#00ff00';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${realDist.toFixed(2)} ${unit}`, midX, midY - 10);
+          }
+        }
+      }
+    }
+
+    async function saveMeasurement(measurementData) {
+      const imagePk = '{{ image.pk }}';
+      const timestamp = new Date().toISOString();
+      const name = `Medición Manual ${timestamp.split('T')[1].slice(0, 8)}`;
+
+      const response = await fetch(`/api/images/${imagePk}/manual-measurement/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({
+          points: measurementData.points,
+          value_pixels: measurementData.pixel_distance,
+          value_real: measurementData.real_distance,
+          unit: measurementData.unit || 'cm',
+          type: 'distance',
+          name: name,
+          timestamp: timestamp,
+          is_manual: true,
+          aruco_reference: true
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al guardar la medición');
+      }
+
+      const result = await response.json();
+
+      // Actualizar la lista de mediciones en la interfaz
+      if (window.renderPersistedDetections) {
+        try {
+          // Recargar los datos completos para asegurar consistencia
+          const updatedData = await fetch(`/api/images/${imagePk}/data/`).then(r => r.json());
+          window.renderPersistedDetections(updatedData);
+        } catch (e) {
+          console.warn('Error actualizando lista de mediciones:', e);
+        }
+      }
+
+      // Al finalizar la función saveManualMeasurement, actualizamos la UI sin recargar la página
+      var manualList = document.getElementById('manualMeasurementsList');
+      if (manualList && manualList.innerText.includes('No hay medidas manuales registradas')) {
+        // Si es la primera medición, recargamos la página para forzar la actualización completa de la UI
+        window.location.reload();
+      } else {
+        // De lo contrario, actualizamos la sección de medidas manuales sin recargar
+        updateManualMeasurements();
+      }
+
+      return result;
+    }
+
+    function showTooltip(message) {
+      let tooltip = document.getElementById('measurementTooltip');
+      if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'measurementTooltip';
+        tooltip.className = 'position-fixed bg-dark text-white px-3 py-2 rounded';
+        tooltip.style.zIndex = '9999';
+        document.body.appendChild(tooltip);
+      }
+      tooltip.textContent = message;
+      tooltip.style.display = 'block';
+    }
+
+    function hideTooltip() {
+      const tooltip = document.getElementById('measurementTooltip');
+      if (tooltip) {
+        tooltip.style.display = 'none';
+      }
+    }
+
+    function showError(message, title = 'Error') {
+      // Create a more user-friendly error display
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed';
+      errorDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+      errorDiv.innerHTML = `
+        <strong>${title}:</strong> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+      document.body.appendChild(errorDiv);
+
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        if (errorDiv.parentNode) {
+          errorDiv.parentNode.removeChild(errorDiv);
+        }
+      }, 5000);
+    }
+
+    // Utility function to show success messages
+    function showSuccessMessage(message, title = 'Éxito') {
+      const successDiv = document.createElement('div');
+      successDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+      successDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+      successDiv.innerHTML = `
+        <strong>${title}:</strong> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+      document.body.appendChild(successDiv);
+
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        if (successDiv.parentNode) {
+          successDiv.parentNode.removeChild(successDiv);
+        }
+      }, 5000);
+    }
+
+    // Render persisted detections (shapes or measurements) into the #objectsList panel
+    function renderPersistedDetections(data) {
+      const objectsList = document.getElementById('objectsList');
+      if (!objectsList) return;
+      const shapes = data.shapes || [];
+      const measurements = data.measurements || [];
+
+      // Exclude manual measurements from 'Objetos detectados' panel. The panel should
+      // only show detector-created shapes (auto-detection) or general measurements when
+      // they are not manual user measurements.
+      // Only treat measurements as manual if backend explicitly marked them
+      // as manual or their type is 'manual_distance'. Avoid classifying
+      // auto-detected measurements (e.g., triangle sides) as manual.
+      const manualMeasurementShapeIds = new Set((measurements || [])
+        .filter(m => m && (m.is_manual === true || m.type === 'manual_distance') && m.shape_id)
+        .map(m => String(m.shape_id)));
+
+      if (shapes.length > 0) {
+        objectsList.innerHTML = '';
+
+        shapes.forEach((s, idx) => {
+          // Skip shapes that were created as manual measurements so they don't
+          // appear in the 'Objetos detectados' panel.
+          try {
+            if (manualMeasurementShapeIds.has(String(s.id))) return;
+            if (s.detected_label && String(s.detected_label).toLowerCase() === 'manual') return;
+          } catch (err) {
+            // ignore
+          }
+          const card = document.createElement('div');
+          card.className = 'card mb-2';
+          const body = document.createElement('div');
+          body.className = 'card-body p-2';
+
+          const title = document.createElement('h6');
+          title.className = 'mb-1';
+          // Prefer using stored type (normalize display)
+          const displayType = shapeDisplayName(s.detected_label || s.type || (s.properties && s.properties.raw && s.properties.raw.shape) || s.name);
+          title.textContent = `${s.name || `Objeto ${idx + 1}`} — ${displayType || `Objeto ${idx + 1}`}`;
+
+          const list = document.createElement('ul');
+          list.className = 'list-unstyled mb-0';
+
+          // Find measurements related to this shape
+          const related = measurements.filter(m => m.shape_id === s.id);
+
+          // Use properties (preferred) or fallback to related measurements
+          const props = s.properties || {};
+          const raw = props.raw || {};
+
+          // If circle-like -> STRICT: show only radius, diameter, area, perimeter
+          // Determine normalized shape display for persisted shape
+          const persistedShapeName = shapeDisplayName(s.detected_label || s.type || raw.shape || s.name || '');
+
+          // Para triángulos
+          if (persistedShapeName && persistedShapeName.toLowerCase().includes('triángulo')) {
+            // Mostrar tipo de triángulo si está disponible
+            if (s.triangle_type || props.triangle_type || (raw && raw.triangle_type)) {
+              const liType = document.createElement('li');
+              liType.textContent = `Tipo: ${s.triangle_type || props.triangle_type || raw.triangle_type}`;
+              list.appendChild(liType);
+            }
+
+            // Mostrar lados
+            const sides = s.sides_cm || props.sides_cm || (raw && raw.sides_cm) || [];
+            if (sides.length === 3) {
+              const labels = ['A', 'B', 'C'];
+              sides.forEach((sideValue, idx) => {
+                const displaySide = convertLength(sideValue, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT);
+                const liSide = document.createElement('li');
+                liSide.textContent = `Lado ${labels[idx]}: ${displaySide ? Number(displaySide).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+                list.appendChild(liSide);
+              });
+            }
+
+            // Mostrar perímetro
+            const perVal = props.perimeter_cm || raw.perimeter_cm || null;
+            if (perVal) {
+              const displayPer = convertLength(perVal, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT);
+              const liPer = document.createElement('li');
+              liPer.textContent = `Perímetro: ${displayPer ? Number(displayPer).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+              list.appendChild(liPer);
+            }
+
+            // Mostrar área
+            const areaVal = props.area_cm2 || raw.area_cm2 || null;
+            if (areaVal) {
+              const displayArea = convertArea(areaVal, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT);
+              const liArea = document.createElement('li');
+              liArea.textContent = `Área: ${displayArea ? Number(displayArea).toFixed(2) + ' ' + USER_PREFERRED_UNIT + '²' : '--'}`;
+              list.appendChild(liArea);
+            }
+
+            // Mostrar diámetro del círculo circunscrito
+            const diameterVal = props.circumscribed_circle_diameter || raw.circumscribed_circle_diameter || null;
+            if (diameterVal) {
+              const displayDiam = convertLength(diameterVal, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT);
+              const liDiam = document.createElement('li');
+              liDiam.textContent = `Diámetro circunscrito: ${displayDiam ? Number(displayDiam).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+              list.appendChild(liDiam);
+            }
+            // Mostrar lados si están disponibles
+            if (s.side_a && s.side_b && s.side_c) {
+              const sides = [s.side_a, s.side_b, s.side_c];
+              const labels = ['A', 'B', 'C'];
+              sides.forEach((sval, si) => {
+                const displaySide = convertLength(sval, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT);
+                const liSide = document.createElement('li');
+                liSide.textContent = `Lado ${labels[si]}: ${displaySide ? Number(displaySide).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+                list.appendChild(liSide);
+              });
+            }
+
+            // Mostrar tipo de triángulo
+            if (s.triangle_type) {
+              const liT = document.createElement('li');
+              {#liT.textContent = `Tipo triángulo: ${s.triangle_type}`;#}
+              list.appendChild(liT);
+            }
+
+            // Mostrar diámetro circunscrito
+            if (s.circumscribed_circle_diameter) {
+              const displayDiam = convertLength(s.circumscribed_circle_diameter, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT);
+              const liDiamC = document.createElement('li');
+              liDiamC.textContent = `Diámetro circunscrito: ${displayDiam ? Number(displayDiam).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+              list.appendChild(liDiamC);
+            }
+
+            // Mostrar área y perímetro
+            if (raw.area_cm2) {
+              const displayArea = convertArea(raw.area_cm2, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT);
+              const liArea = document.createElement('li');
+              liArea.textContent = `Área: ${displayArea ? Number(displayArea).toFixed(2) + ' ' + USER_PREFERRED_UNIT + '²' : '--'}`;
+              list.appendChild(liArea);
+            }
+
+            if (raw.perimeter_cm) {
+              const displayPer = convertLength(raw.perimeter_cm, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT);
+              const liPer = document.createElement('li');
+              liPer.textContent = `Perímetro: ${displayPer ? Number(displayPer).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+              list.appendChild(liPer);
+            }
+          }
+          // Para círculos
+          else if (props.radius_cm || raw.radius_cm || (persistedShapeName && persistedShapeName.toLowerCase().startsWith('círc'))) {
+            const radius = (props.radius_cm || raw.radius_cm) || null;
+            const displayRadius = radius ? convertLength(radius, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+            const liRad = document.createElement('li');
+            liRad.textContent = `Radio: ${displayRadius ? Number(displayRadius).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+            list.appendChild(liRad);
+
+            const diam = props.diameter_cm || (radius ? radius * 2 : null);
+            const displayDiam = diam ? convertLength(diam, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+            const liDiam = document.createElement('li');
+            liDiam.textContent = `Diámetro: ${displayDiam ? Number(displayDiam).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+            list.appendChild(liDiam);
+
+            const areaVal = props.area_cm2 || raw.area_cm2 || null;
+            const displayArea = areaVal ? convertArea(areaVal, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+            const liArea = document.createElement('li');
+            liArea.textContent = `Área: ${displayArea ? Number(displayArea).toFixed(2) + ' ' + USER_PREFERRED_UNIT + '²' : '--'}`;
+            list.appendChild(liArea);
+
+            const perVal = props.perimeter_cm || null;
+            const displayPer = perVal ? convertLength(perVal, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+            const liPer = document.createElement('li');
+            liPer.textContent = `Perímetro: ${displayPer ? Number(displayPer).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+            list.appendChild(liPer);
+          } else {
+            // For generic objects (including forced 'Objeto'), show only width/height/area/perimeter
+            const measW = related.find(m => m.type === 'width');
+            const measH = related.find(m => m.type === 'height');
+            const measA = related.find(m => m.type === 'area');
+            const liW = document.createElement('li');
+            const rawW = (measW && measW.value_real) || props.w_cm || null;
+            const displayW = rawW ? convertLength(rawW, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+            liW.textContent = `Ancho: ${displayW ? Number(displayW).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+            list.appendChild(liW);
+
+            const liH = document.createElement('li');
+            const rawH = (measH && measH.value_real) || props.h_cm || null;
+            const displayH = rawH ? convertLength(rawH, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+            liH.textContent = `Alto: ${displayH ? Number(displayH).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+            list.appendChild(liH);
+
+            const liA = document.createElement('li');
+            const areaVal = (measA && measA.value_real) || props.area_cm2 || raw.area_cm2;
+            const displayAreaApprox = areaVal ? convertArea(areaVal, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+            liA.textContent = `Área aproximada: ${displayAreaApprox ? Number(displayAreaApprox).toFixed(2) + ' ' + USER_PREFERRED_UNIT + '²' : '--'}`;
+            list.appendChild(liA);
+
+            const liPer = document.createElement('li');
+            const perVal = props.perimeter_cm || null;
+            const displayPer = perVal ? convertLength(perVal, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+            liPer.textContent = `Perímetro: ${displayPer ? Number(displayPer).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+            list.appendChild(liPer);
+          }
+
+          // Center
+          const center = (props.raw && props.raw.center_px) || s.center_px || null;
+          if (center) {
+            const liC = document.createElement('li');
+
+            liC.textContent = `Centro (px): (${center[0]}, ${center[1]})`;
+            list.appendChild(liC);
+          }
+
+          body.appendChild(title);
+          body.appendChild(list);
+
+          // annotated image link removed
+
+          card.appendChild(body);
+          objectsList.appendChild(card);
+        });
+
+      } else if (measurements.length > 0) {
+        // Show measurements in a dedicated section
+
+        objectsList.innerHTML = '';
+
+        // Add measurements header
+        const measurementsHeader = document.createElement('h6');
+        measurementsHeader.className = 'mb-3';
+        measurementsHeader.innerHTML = '<i class="bi bi-rulers me-2"></i>Historial de Mediciones';
+        objectsList.appendChild(measurementsHeader);
+
+        measurements.forEach((m, idx) => {
+          const card = document.createElement('div');
+          card.className = 'card mb-2';
+          const body = document.createElement('div');
+          body.className = 'card-body p-2';
+
+          const title = document.createElement('h6');
+          title.className = 'mb-1 d-flex justify-content-between align-items-center';
+          const nameSpan = document.createElement('span');
+          nameSpan.textContent = m.name || (`Medición ${idx + 1}`);
+          title.appendChild(nameSpan);
+
+          // Add timestamp if available
+          if (m.created_at) {
+            const timeSpan = document.createElement('small');
+            timeSpan.className = 'text-muted';
+            const date = new Date(m.created_at);
+            timeSpan.textContent = date.toLocaleTimeString();
+            title.appendChild(timeSpan);
+          }
+
+          const list = document.createElement('ul');
+          list.className = 'list-unstyled mb-0';
+
+          const liVal = document.createElement('li');
+          if (m.value_real) {
+            // Convert stored real value from image calibration unit to preferred unit
+            const displayVal = convertLength(m.value_real, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT);
+            liVal.textContent = `Valor: ${displayVal ? Number(displayVal).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+          } else if (m.value_pixels) {
+            liVal.textContent = `Valor: ${Number(m.value_pixels).toFixed(1)} px`;
+          } else {
+            liVal.textContent = 'Valor: --';
+          }
+          list.appendChild(liVal);
+
+          body.appendChild(title);
+          body.appendChild(list);
+          card.appendChild(body);
+          objectsList.appendChild(card);
+        });
+      } else {
+        objectsList.innerHTML = '<div class="text-muted">No se han detectado objetos.</div>';
+      }
+    }
+
+    // Nueva función para actualizar las medidas manuales desde el servidor
+    async function updateManualMeasurements() {
+      try {
+        const response = await fetch(`/core/image_data_api/${IMAGE_ID}/`);
+        if (!response.ok) throw new Error('Error en la solicitud.');
+        const data = await response.json();
+        // Actualizar la UI con las medidas manuales recibidas
+        if (data.manualMeasurements) {
+          renderManualMeasurements(data.manualMeasurements);
+        }
+      } catch (error) {
+        console.error('Error al actualizar las medidas manuales:', error);
+      }
+    }
+
+    // Manual measurement state variables
+    let isManualMeasuring = false;
+    let measurementPoints = [];
+    let activeMeasurementLine = null;
+
+    // Función auxiliar para calcular la distancia en píxeles entre dos puntos
+    function calculateDistance(point1, point2) {
+      const dx = point2.x - point1.x;
+      const dy = point2.y - point1.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    // Función para guardar medición manual
+    // Función para guardar medición manual (SIMPLIFICADA Y CORREGIDA)
+    async function saveManualMeasurement(points) {
+      if (!window.measurementTool || !window.measurementTool.isCalibrated) {
+        throw new Error('La imagen no está calibrada. No se puede guardar una medida real.');
+      }
+
+      const pixelDistance = calculateDistance(points[0], points[1]);
+      const realDistance = pixelDistance / measurementTool.scaleFactor;
+
+      const measurementData = {
+        points: points,
+        value_pixels: pixelDistance,
+        value_real: realDistance,
+        unit: measurementTool.calibrationUnit || 'cm'
+        // No enviamos `is_manual` porque el backend ya lo asigna por defecto
+      };
+
+      const response = await fetch(`/api/images/{{ image.pk }}/manual-measurement/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrftoken // Asegúrate que 'csrftoken' esté disponible globalmente
+        },
+        body: JSON.stringify(measurementData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        // Propagamos el mensaje de error del servidor para que se muestre en la UI
+        throw new Error(errorData.message || 'Error desconocido al guardar la medición.');
+      }
+
+      // Devolvemos los datos de la respuesta para que la cadena de promesas continúe
+      return await response.json();
+    }
+
+    // Initialize when document is ready
+    document.addEventListener('DOMContentLoaded', function () {
+      const canvas = document.getElementById('imageCanvas');
+      const imageUrl = canvas.dataset.imageUrl;
+      const imageWidth = parseInt(canvas.dataset.imageWidth);
+      const imageHeight = parseInt(canvas.dataset.imageHeight);
+
+      measurementTool = new ImageMeasurementTool('imageCanvas', imageUrl, imageWidth, imageHeight);
+      window.measurementTool = measurementTool;
+
+      // Initialize manual measurement button with ArUco validation
+      const manualMeasureBtn = document.getElementById('startManualMeasureBtn');
+      if (manualMeasureBtn) {
+        manualMeasureBtn.addEventListener('click', async function () {
+          // Si ya está midiendo, cancelar la medición
+          if (isManualMeasuring) {
+            isManualMeasuring = false;
+            measurementPoints = [];
+            this.classList.remove('active');
+            this.innerHTML = '<i class="bi bi-rulers me-1"></i>Medición Manual';
+            canvas.style.cursor = 'default';
+            hideTooltip();
+            if (activeMeasurementLine) {
+              measurementTool.draw();
+              activeMeasurementLine = null;
+            }
+            return;
+          }
+
+          // Verificar ArUco antes de permitir la medición
+          try {
+            const imagePk = '{{ image.pk }}';
+            const response = await fetch(`/api/images/${imagePk}/aruco-check/`, {
+              credentials: 'same-origin'
+            });
+            const data = await response.json();
+
+            if (!data || !data.aruco_found) {
+              showError('Esta imagen requiere un marcador ArUco de 5 cm para realizar mediciones manuales.');
+              return;
+            }
+
+            // Actualizar datos de ArUco y comenzar medición
+            window.detectedArucoSidePx = data.side_px;
+            if (window.measurementTool) {
+              window.measurementTool.scaleFactor = data.side_px / ARUCO_REAL_CM;
+              window.measurementTool.isCalibrated = true;
+              window.measurementTool.calibrationUnit = 'cm';
+            }
+
+            // Iniciar medición
+            isManualMeasuring = true;
+            measurementPoints = [];
+            this.classList.add('active');
+            this.innerHTML = '<i class="bi bi-rulers me-1"></i>Cancelar Medición';
+            canvas.style.cursor = 'crosshair';
+            showTooltip('Haga clic para marcar el primer punto de medición');
+
+          } catch (error) {
+            console.error('Error al verificar ArUco:', error);
+            showError('Error al verificar el marcador ArUco. Por favor, intente nuevamente.');
+            return;
+          }
+
+          // Si no hay datos en memoria, verificar ArUco
+          try {
+            const imagePk = '{{ image.pk }}';
+            const response = await fetch(`/api/images/${imagePk}/aruco-check/`, {
+              credentials: 'same-origin'
+            });
+            const data = await response.json();
+
+            if (!data || !data.aruco_found) {
+              showError('Esta imagen requiere un marcador ArUco de 5 cm para realizar mediciones manuales.');
+              return;
+            }
+
+            // ArUco encontrado - configurar herramienta
+            window.detectedArucoSidePx = data.side_px;
+            if (window.measurementTool && data.side_px) {
+              const pixelsPerCm = data.side_px / ARUCO_REAL_CM;
+              window.measurementTool.scaleFactor = pixelsPerCm;
+              window.measurementTool.isCalibrated = true;
+              window.measurementTool.calibrationUnit = 'cm';
+            }
+
+            // Iniciar medición
+            isManualMeasuring = true;
+            measurementPoints = [];
+            this.classList.add('active');
+            this.innerHTML = '<i class="bi bi-rulers me-1"></i>Cancelar Medición';
+            canvas.style.cursor = 'crosshair';
+            showTooltip('Haga clic para marcar el primer punto de medición');
+
+          } catch (error) {
+            console.error('Error verificando ArUco:', error);
+            showError('Error al verificar el marcador ArUco. Intente nuevamente.');
+          }
+        });
+      }
+
+      // Add canvas click handler for manual measurements
+      // Initialize manual measurements array
+      window.manualMeasurements = [];
+
+      canvas.addEventListener('click', function (e) {
+        if (!isManualMeasuring) return;
+
+        // Use the tool's helper to compute mouse position consistently (handles touch/mouse and scale)
+        const pos = measurementTool.getMousePos(e);
+        const point = {x: pos.x, y: pos.y};
+
+        measurementPoints.push(point);
+
+        if (measurementPoints.length === 1) {
+          // First point placed
+          showTooltip('Haga clic para marcar el segundo punto');
+          drawManualMeasurement();
+        } else if (measurementPoints.length === 2) {
+          // Segundo punto marcado, procedemos a guardar.
+          showTooltip('Guardando medición...'); // Feedback para el usuario
+
+          saveManualMeasurement(measurementPoints)
+            .then(saveResult => {
+              if (saveResult.status !== 'success') {
+                // Si el guardado falla, muestra el error y detiene el proceso.
+                throw new Error(saveResult.message || 'No se pudo guardar la medición.');
+              }
+
+              showSuccessMessage('Medida guardada exitosamente.');
+
+              // Ahora que se guardó, pedimos la lista COMPLETA y actualizada al servidor.
+              // Esto asegura que la UI siempre refleje el estado real de la base de datos.
+              return fetch(`/api/images/${IMAGE_ID}/manual-measurements/`);
+            })
+            .then(response => {
+              if (!response.ok) {
+                throw new Error('No se pudo obtener la lista de mediciones actualizada.');
+              }
+              return response.json();
+            })
+            .then(data => {
+              // Con la lista fresca de mediciones, actualizamos el estado global.
+              if (data && data.measurements) {
+                window.manualMeasurements = data.measurements.map(m => ({
+                  id: m.id,
+                  name: m.name || `Medida`,
+                  points: m.shape ? m.shape.points : [],
+                  pixel_distance: m.value_pixels,
+                  value_real: m.value_real,
+                  unit: m.unit
+                }));
+
+                // ¡Esta es la parte clave! Renderizamos de nuevo la lista y el canvas.
+                renderManualMeasurements(); // Actualiza la lista en la UI.
+                drawManualMeasurement();  // Redibuja las líneas en el canvas.
+              }
+            })
+            .catch(err => {
+              // Manejo centralizado de cualquier error en la cadena de promesas.
+              console.error('Error en el proceso de guardado y actualización:', err);
+              showError(err.message || 'Ocurrió un error inesperado.');
+            })
+            .finally(() => {
+              // Limpiamos el estado para la siguiente medición, tanto si hubo éxito como si no.
+              measurementPoints = [];
+              showTooltip('Haga clic para comenzar una nueva medición');
+            });
+        }
+      });
+
+      // Add mouse move handler for preview line
+      canvas.addEventListener('mousemove', function (e) {
+        if (!isManualMeasuring || measurementPoints.length !== 1) return;
+
+        const currentPos = measurementTool.getMousePos(e);
+        drawManualMeasurement(currentPos);
+      });
+
+      // No necesitamos verificación aquí - se hace al cargar la imagen
+    });
+
+    // Hide report buttons on load if there are no measurements yet
+    document.addEventListener('DOMContentLoaded', function () {
+      const previewBtn = document.getElementById('previewPdfBtn');
+      const downloadExcelBtn = document.getElementById('downloadExcelBtn');
+      const hasMeasurements = {{ image.measurements.exists|yesno:'true,false' }};
+
+      if (previewBtn && downloadExcelBtn && !hasMeasurements) {
+        previewBtn.style.display = 'none';
+        downloadExcelBtn.style.display = 'none';
+      }
+    });
+
+    // Tool functions
+    function startCalibration() {
+      measurementTool.setTool('calibration');
+      const modal = new bootstrap.Modal(document.getElementById('calibrationModal'));
+      modal.show();
+    }
+
+    function activateTool(tool) {
+      measurementTool.setTool(tool);
+    }
+
+    function zoomIn() {
+      measurementTool.zoomIn();
+    }
+
+    function zoomOut() {
+      measurementTool.zoomOut();
+    }
+
+    function resetZoom() {
+      measurementTool.resetZoom();
+    }
+
+    // New: call server-side detection
+    document.addEventListener('DOMContentLoaded', function () {
+      const btn = document.getElementById('runDetectionBtn');
+      if (!btn) return;
+
+      btn.addEventListener('click', function () {
+        const imagePk = '{{ image.pk }}';
+        const url = `/api/images/${imagePk}/process/`;
+
+        showLoading();
+
+        fetch(url, {
+          method: 'POST',
+          headers: {'X-CSRFToken': csrftoken},
+        })
+          .then(resp => resp.json())
+          .then(data => {
+            hideLoading();
+            if (data.status !== 'success') {
+              showError(data.message || 'Error en la detección');
+              return;
+            }
+
+            const objectsList = document.getElementById('objectsList');
+            objectsList.innerHTML = '';
+
+            if (!data.results || data.results.length === 0) {
+              objectsList.innerHTML = '<div class="text-muted">No se encontraron objetos.</div>';
+              return;
+            }
+
+            data.results.forEach((obj, idx) => {
+              const card = document.createElement('div');
+              card.className = 'card mb-2';
+              const body = document.createElement('div');
+              body.className = 'card-body p-2';
+
+              const title = document.createElement('h6');
+              title.className = 'mb-1';
+              // Normalize live detector label to a friendly display name (prefer shape_display returned by server)
+              const liveRaw = obj.shape_display || obj.shape || obj.label || obj.type;
+              const liveType = shapeDisplayName(liveRaw);
+              title.textContent = `Objeto ${obj.index} — ${liveType || liveRaw || 'Objeto'}`;
+
+              const list = document.createElement('ul');
+              list.className = 'list-unstyled mb-0';
+
+              // Show detailed metrics: follow strict rules:
+              // - Círculo: show only radius, diameter, area, perimeter
+              // - Objeto (generic/complex): show only width, height, area, perimeter
+              const props = obj || {};
+
+              // Use normalized display name for reliable checks across persisted and live labels
+              const normalizedShape = shapeDisplayName(props.shape || props.shape_display || props.shape_label || (props.raw && props.raw.shape) || '');
+              const isCircle = (normalizedShape && normalizedShape.toLowerCase().startsWith('círc')) || props.radius_cm;
+              const isObjeto = normalizedShape && normalizedShape.toLowerCase() === 'objeto';
+
+              if (isCircle) {
+                const radius = props.radius_cm || null;
+                const displayRadius = radius ? convertLength(radius, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+                const liRad = document.createElement('li');
+                liRad.textContent = `Radio: ${displayRadius ? Number(displayRadius).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+                list.appendChild(liRad);
+
+                const diam = props.diameter_cm || (radius ? radius * 2 : null);
+                const displayDiam = diam ? convertLength(diam, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+                const liDiam = document.createElement('li');
+                liDiam.textContent = `Diámetro: ${displayDiam ? Number(displayDiam).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+                list.appendChild(liDiam);
+
+                const areaVal = props.area_cm2 || null;
+                const displayArea = areaVal ? convertArea(areaVal, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+                const liArea = document.createElement('li');
+                liArea.textContent = `Área: ${displayArea ? Number(displayArea).toFixed(2) + ' ' + USER_PREFERRED_UNIT + '²' : '--'}`;
+                list.appendChild(liArea);
+
+                const perVal = props.perimeter_cm || null;
+                const displayPer = perVal ? convertLength(perVal, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+                const liPer = document.createElement('li');
+                liPer.textContent = `Perímetro: ${displayPer ? Number(displayPer).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+                list.appendChild(liPer);
+
+              } else if (isObjeto) {
+                // Generic object: width, height, area, perimeter only
+                const w = props.w_cm || null;
+                const h = props.h_cm || null;
+                const displayW = w ? convertLength(w, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+                const displayH = h ? convertLength(h, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+                const liW = document.createElement('li');
+                liW.textContent = `Ancho: ${displayW ? Number(displayW).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+                list.appendChild(liW);
+                const liH = document.createElement('li');
+                liH.textContent = `Alto: ${displayH ? Number(displayH).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+                list.appendChild(liH);
+
+                const areaVal = props.area_cm2 || null;
+                const displayA = areaVal ? convertArea(areaVal, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+                const liA = document.createElement('li');
+                liA.textContent = `Área aproximada: ${displayA ? Number(displayA).toFixed(2) + ' ' + USER_PREFERRED_UNIT + '²' : '--'}`;
+                list.appendChild(liA);
+
+                const liPer = document.createElement('li');
+                const perVal = props.perimeter_cm || null;
+                const displayPer = perVal ? convertLength(perVal, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+                liPer.textContent = `Perímetro: ${displayPer ? Number(displayPer).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+                list.appendChild(liPer);
+
+              } else {
+                // For rectangles, triangles and polygons keep current behavior (existing fields)
+                const w = props.w_cm || null;
+                const h = props.h_cm || null;
+                const displayW = w ? convertLength(w, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+                const displayH = h ? convertLength(h, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+                const liW = document.createElement('li');
+                liW.textContent = `Ancho: ${displayW ? Number(displayW).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+                list.appendChild(liW);
+                const liH = document.createElement('li');
+                liH.textContent = `Alto: ${displayH ? Number(displayH).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+                list.appendChild(liH);
+
+                const areaVal = props.area_cm2 || null;
+                const displayA = areaVal ? convertArea(areaVal, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT) : null;
+                const liA = document.createElement('li');
+                liA.textContent = `Área aproximada: ${displayA ? Number(displayA).toFixed(2) + ' ' + USER_PREFERRED_UNIT + '²' : '--'}`;
+                list.appendChild(liA);
+
+                if (props.perimeter_cm) {
+                  const displayPer = convertLength(props.perimeter_cm, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT);
+                  const liPer = document.createElement('li');
+                  liPer.textContent = `Perímetro: ${displayPer ? Number(displayPer).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+                  list.appendChild(liPer);
+                }
+                // Mostrar información específica para triángulos
+                if (normalizedShape && normalizedShape.toLowerCase().includes('triángulo')) {
+                  // Mostrar lados
+                  if (props.sides_cm && props.sides_cm.length === 3) {
+                    const labels = ['A', 'B', 'C'];
+                    props.sides_cm.forEach((sval, si) => {
+                      const displaySide = convertLength(sval, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT);
+                      const liSide = document.createElement('li');
+                      liSide.textContent = `Lado ${labels[si] || (si + 1)}: ${displaySide ? Number(displaySide).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+                      list.appendChild(liSide);
+                    });
+                  }
+
+                  // Mostrar tipo de triángulo
+                  if (props.triangle_type) {
+                    const liT = document.createElement('li');
+                    {#liT.textContent = `Tipo triángulo: ${props.triangle_type}`;#}
+                    list.appendChild(liT);
+                  }
+
+                  // Mostrar diámetro circunscrito
+                  if (props.diameter_cm || props.circumscribed_circle_diameter) {
+                    const diameter = props.diameter_cm || props.circumscribed_circle_diameter;
+                    const displayDiam = convertLength(diameter, IMAGE_CALIBRATION_UNIT, USER_PREFERRED_UNIT);
+                    const liDiamC = document.createElement('li');
+                    liDiamC.textContent = `Diámetro circunscrito: ${displayDiam ? Number(displayDiam).toFixed(2) + ' ' + USER_PREFERRED_UNIT : '--'}`;
+                    list.appendChild(liDiamC);
+                  }
+                }
+              }
+
+              // Center
+              if (obj.center_px) {
+                const liC = document.createElement('li');
+                liC.textContent = `Centro (px): (${obj.center_px[0]}, ${obj.center_px[1]})`;
+                list.appendChild(liC);
+              }
+
+              body.appendChild(title);
+              body.appendChild(list);
+
+              // annotated image link removed
+
+              card.appendChild(body);
+              objectsList.appendChild(card);
+            });
+
+            showSuccessMessage('Detección completada. Resultados guardados.');
+            // If the server reported that an email notification was sent, show a separate message
+            if (data.email_sent) {
+              showSuccessMessage('Notificación enviada: el resultado se ha enviado al correo registrado.');
+            }
+            // Show report buttons now that we have measurements
+            try {
+              const previewBtn = document.getElementById('previewPdfBtn');
+              const downloadExcelBtn = document.getElementById('downloadExcelBtn');
+              if (previewBtn) previewBtn.style.display = '';
+              if (downloadExcelBtn) downloadExcelBtn.style.display = '';
+
+              // Update calibration status and internal conversion factors using server response
+              try {
+                // If backend returned calibration info, update globals and measurement tool
+                if (data.calibration_unit) {
+                  // update displayed status
+                  const statusCell = document.getElementById('imageCalibrationStatus');
+                  if (statusCell) {
+                    statusCell.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>Calibrada (${data.calibration_unit})</span>`;
+                  }
+                  const headerBadge = document.getElementById('headerCalibrationBadge');
+                  if (headerBadge) {
+                    headerBadge.className = 'badge bg-success ms-2';
+                    headerBadge.innerHTML = '<i class="bi bi-check-circle me-1"></i>Calibrada';
+                  }
+
+                  // Update JS globals so conversions use the correct source unit
+                  IMAGE_CALIBRATION_UNIT = data.calibration_unit || IMAGE_CALIBRATION_UNIT;
+                  // scale_factor is pixels per unit (e.g., pixels_per_cm). store on measurementTool
+                  if (data.scale_factor && window.measurementTool) {
+                    window.measurementTool.isCalibrated = true;
+                    window.measurementTool.scaleFactor = data.scale_factor;
+                    window.measurementTool.calibrationUnit = data.calibration_unit || window.measurementTool.calibrationUnit;
+                  }
+
+                  // Re-render persisted list to reflect conversions to user preferred unit
+                  try {
+                    if (window.renderPersistedDetections) {
+                      // Reload existing data via the API to ensure conversions use new calibration
+                      fetch(`/api/images/{{ image.pk }}/data/`)
+                        .then(r => r.json())
+                        .then(d => window.renderPersistedDetections(d))
+                        .catch(e => console.warn('Error reloading persisted detections:', e));
+                    }
+                  } catch (e) {
+                    console.warn('Could not re-render persisted detections after calibration update:', e);
+                  }
+                }
+              } catch (e) {
+                console.warn('Error updating calibration state:', e);
+              }
+            } catch (e) {
+              console.warn('Could not update report buttons/status UI:', e);
+            }
+          })
+          .catch(err => {
+            hideLoading();
+            console.error(err);
+            showError('Error al procesar la imagen. Revisa los logs del servidor.');
+          });
+      });
+    });
+
+    // Initialize manual measurements array at the start
+    window.manualMeasurements = [];
+  </script>
+{% endblock %}

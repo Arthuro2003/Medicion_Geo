@@ -1,0 +1,465 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Eliminar Proyecto - MediciónGeo{% endblock %}
+
+{% block page_title %}Eliminar Proyecto{% endblock %}
+
+{% block breadcrumb %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'core:project_list' %}">Mis Proyectos</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'core:project_detail' object.pk %}">{{ object.name }}</a></li>
+      <li class="breadcrumb-item active">Eliminar</li>
+    </ol>
+  </nav>
+{% endblock %}
+
+{% block extra_css %}
+  <style>
+      .delete-container {
+          max-width: 600px;
+          margin: 0 auto;
+      }
+
+      .delete-card {
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: var(--border-radius);
+          box-shadow: 0 10px 25px var(--shadow);
+          overflow: hidden;
+      }
+
+      .delete-header {
+          background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+          color: white;
+          padding: 2rem;
+          text-align: center;
+      }
+
+      .delete-header h2 {
+          margin: 0;
+          font-weight: 700;
+          font-size: 2rem;
+      }
+
+      .delete-header p {
+          margin: 0.5rem 0 0 0;
+          opacity: 0.9;
+      }
+
+      .warning-icon {
+          width: 80px;
+          height: 80px;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 1rem;
+          font-size: 2.5rem;
+          animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+          0% {
+              transform: scale(1);
+          }
+          50% {
+              transform: scale(1.05);
+          }
+          100% {
+              transform: scale(1);
+          }
+      }
+
+      .delete-body {
+          padding: 2rem;
+      }
+
+      .project-info {
+          background: var(--bg-tertiary);
+          border: 1px solid var(--border-color);
+          border-radius: var(--border-radius-sm);
+          padding: 1.5rem;
+          margin-bottom: 2rem;
+      }
+
+      .project-name {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: var(--text-primary);
+          margin-bottom: 0.5rem;
+      }
+
+      .project-description {
+          color: var(--text-secondary);
+          margin-bottom: 1rem;
+      }
+
+      .project-stats {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          gap: 1rem;
+          margin-top: 1rem;
+      }
+
+      .stat-item {
+          text-align: center;
+          padding: 1rem;
+          background: var(--bg-secondary);
+          border-radius: var(--border-radius-sm);
+          border: 1px solid var(--border-color);
+      }
+
+      .stat-number {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: var(--primary);
+          margin-bottom: 0.25rem;
+      }
+
+      .stat-label {
+          color: var(--text-secondary);
+          font-size: 0.875rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+      }
+
+      .warning-section {
+          background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
+          border: 1px solid #fc8181;
+          border-radius: var(--border-radius-sm);
+          padding: 1.5rem;
+          margin-bottom: 2rem;
+      }
+
+      [data-bs-theme="dark"] .warning-section {
+          background: linear-gradient(135deg, #4d1a1a 0%, #5a2d2d 100%);
+          border-color: #e53e3e;
+      }
+
+      .warning-title {
+          color: #c53030;
+          font-weight: 700;
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+      }
+
+      [data-bs-theme="dark"] .warning-title {
+          color: #fca5a5;
+      }
+
+      .warning-list {
+          margin: 0;
+          padding-left: 1.5rem;
+          color: #742a2a;
+      }
+
+      [data-bs-theme="dark"] .warning-list {
+          color: #fca5a5;
+      }
+
+      .warning-list li {
+          margin-bottom: 0.5rem;
+      }
+
+      .confirmation-section {
+          background: var(--bg-tertiary);
+          border: 1px solid var(--border-color);
+          border-radius: var(--border-radius-sm);
+          padding: 1.5rem;
+          margin-bottom: 2rem;
+      }
+
+      .confirmation-title {
+          color: var(--text-primary);
+          font-weight: 700;
+          margin-bottom: 1rem;
+      }
+
+      .confirmation-text {
+          color: var(--text-secondary);
+          margin-bottom: 1rem;
+      }
+
+      .form-check {
+          display: flex;
+          align-items: center;
+          margin-bottom: 1rem;
+      }
+
+      .form-check-input {
+          margin-right: 0.75rem;
+          transform: scale(1.2);
+      }
+
+      .form-check-label {
+          color: var(--text-primary);
+          font-weight: 600;
+          cursor: pointer;
+      }
+
+      .btn-group {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+          margin-top: 2rem;
+      }
+
+      .btn-danger-custom {
+          background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+          border: none;
+          color: white;
+          padding: 0.75rem 2rem;
+          border-radius: var(--border-radius-sm);
+          font-weight: 600;
+          transition: var(--transition);
+          position: relative;
+          overflow: hidden;
+      }
+
+      .btn-danger-custom:hover {
+          background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(245, 101, 101, 0.4);
+      }
+
+      .btn-danger-custom:disabled {
+          background: var(--text-muted);
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+      }
+
+      .btn-secondary-custom {
+          background: transparent;
+          border: 2px solid var(--border-color);
+          color: var(--text-primary);
+          padding: 0.75rem 2rem;
+          border-radius: var(--border-radius-sm);
+          font-weight: 600;
+          transition: var(--transition);
+      }
+
+      .btn-secondary-custom:hover {
+          background: var(--bg-tertiary);
+          border-color: var(--primary);
+          color: var(--primary);
+      }
+
+      .consequences-section {
+          background: var(--bg-tertiary);
+          border-left: 4px solid #f56565;
+          border-radius: var(--border-radius-sm);
+          padding: 1.5rem;
+          margin-bottom: 2rem;
+      }
+
+      .consequences-title {
+          color: var(--text-primary);
+          font-weight: 700;
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+      }
+
+      .consequences-list {
+          margin: 0;
+          padding-left: 1.5rem;
+          color: var(--text-secondary);
+      }
+
+      .consequences-list li {
+          margin-bottom: 0.5rem;
+      }
+
+      @media (max-width: 768px) {
+          .delete-container {
+              padding: 0 1rem;
+          }
+
+          .delete-header {
+              padding: 1.5rem;
+          }
+
+          .delete-body {
+              padding: 1.5rem;
+          }
+
+          .btn-group {
+              flex-direction: column;
+          }
+
+          .project-stats {
+              grid-template-columns: 1fr;
+          }
+      }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="delete-container">
+    <div class="delete-card">
+      <div class="delete-header">
+        <div class="warning-icon">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h2>Eliminar Proyecto</h2>
+        <p>Esta acción no se puede deshacer</p>
+      </div>
+
+      <div class="delete-body">
+        <!-- Project Information -->
+        <div class="project-info">
+          <div class="project-name">{{ object.name }}</div>
+          <div class="project-description">{{ object.description|default:"Sin descripción" }}</div>
+
+          <div class="project-stats">
+            <div class="stat-item">
+              <div class="stat-number">{{ object.total_images }}</div>
+              <div class="stat-label">Imágenes</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number">{{ object.total_measurements }}</div>
+              <div class="stat-label">Mediciones</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Warning Section -->
+        <div class="warning-section">
+          <div class="warning-title">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ¡Atención! Esta acción es irreversible
+          </div>
+          <ul class="warning-list">
+            <li>Todas las imágenes del proyecto serán eliminadas permanentemente</li>
+            <li>Todas las mediciones realizadas se perderán</li>
+            <li>Todos los reportes generados serán eliminados</li>
+            <li>Esta acción no se puede deshacer</li>
+          </ul>
+        </div>
+
+        <!-- Consequences Section -->
+        <div class="consequences-section">
+          <div class="consequences-title">
+            <i class="fas fa-list me-2"></i>
+            Datos que se eliminarán
+          </div>
+          <ul class="consequences-list">
+            <li><strong>{{ object.total_images }}</strong> imágenes procesadas</li>
+            <li><strong>{{ object.total_measurements }}</strong> mediciones realizadas</li>
+            <li>Formas geométricas detectadas</li>
+            <li>Reportes generados</li>
+            <li>Todos los datos de calibración</li>
+            <li>Configuraciones del proyecto</li>
+          </ul>
+        </div>
+
+        <!-- Confirmation Form -->
+        <form method="post" id="deleteForm">
+          {% csrf_token %}
+
+          <div class="confirmation-section">
+            <div class="confirmation-title">
+              <i class="fas fa-shield-alt me-2"></i>
+              Confirmación de eliminación
+            </div>
+            <div class="confirmation-text">
+              Para confirmar la eliminación, marca la casilla a continuación:
+            </div>
+
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="confirmDelete" required>
+              <label class="form-check-label" for="confirmDelete">
+                Entiendo que esta acción eliminará permanentemente el proyecto
+                <strong>"{{ object.name }}"</strong> y todos sus datos asociados.
+              </label>
+            </div>
+          </div>
+
+          <div class="btn-group">
+            <a href="{% url 'core:project_detail' object.pk %}" class="btn btn-secondary-custom">
+              <i class="fas fa-arrow-left me-2"></i>
+              Cancelar
+            </a>
+            <button type="submit" class="btn btn-danger-custom" id="deleteButton" disabled>
+              <i class="fas fa-trash me-2"></i>
+              Eliminar Proyecto
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const confirmCheckbox = document.getElementById('confirmDelete');
+      const deleteButton = document.getElementById('deleteButton');
+      const deleteForm = document.getElementById('deleteForm');
+
+      // Enable/disable delete button based on checkbox
+      confirmCheckbox.addEventListener('change', function () {
+        deleteButton.disabled = !this.checked;
+      });
+
+      // Form submission with additional confirmation
+      deleteForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        if (!confirmCheckbox.checked) {
+          alert('Debes confirmar la eliminación marcando la casilla');
+          return;
+        }
+
+        // Additional confirmation dialog
+        const projectName = '{{ object.name }}';
+        const confirmed = confirm(
+          `¿Estás completamente seguro de que quieres eliminar el proyecto "${projectName}"?\n\n` +
+          'Esta acción NO se puede deshacer y eliminará permanentemente:\n' +
+          '• Todas las imágenes\n' +
+          '• Todas las mediciones\n' +
+          '• Todos los reportes\n' +
+          '• Todos los datos del proyecto\n\n' +
+          'Escribe "ELIMINAR" en el siguiente diálogo para confirmar.'
+        );
+
+        if (confirmed) {
+          const finalConfirmation = prompt(
+            'Para confirmar la eliminación, escribe "ELIMINAR" (en mayúsculas):'
+          );
+
+          if (finalConfirmation === 'ELIMINAR') {
+            // Show loading state
+            deleteButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Eliminando...';
+            deleteButton.disabled = true;
+
+            // Submit the form
+            this.submit();
+          } else {
+            alert('Confirmación incorrecta. La eliminación ha sido cancelada.');
+          }
+        }
+      });
+
+      // Add animation to warning icon
+      const warningIcon = document.querySelector('.warning-icon');
+      warningIcon.addEventListener('mouseenter', function () {
+        this.style.animation = 'pulse 0.5s infinite';
+      });
+
+      warningIcon.addEventListener('mouseleave', function () {
+        this.style.animation = 'pulse 2s infinite';
+      });
+
+      // Add fade-in animation to card
+      const deleteCard = document.querySelector('.delete-card');
+      deleteCard.classList.add('fade-in-up');
+    });
+  </script>
+{% endblock %}

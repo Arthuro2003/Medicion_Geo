@@ -1,0 +1,632 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Galería - MediciónGeo{% endblock %}
+
+{% block page_title %}Galería de Imágenes{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item active">Galería</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .gallery-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .gallery-header {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .gallery-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-sm);
+        padding: 1.5rem;
+        text-align: center;
+        transition: var(--transition);
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px var(--shadow);
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.875rem;
+    }
+    
+    .filters-section {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .filter-row {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 1rem;
+        align-items: end;
+    }
+    
+    .search-input {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: var(--border-radius-sm);
+        padding: 0.75rem 1rem;
+        transition: var(--transition);
+    }
+    
+    .search-input:focus {
+        background: var(--bg-secondary);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        color: var(--text-primary);
+    }
+    
+    .filter-select {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: var(--border-radius-sm);
+        padding: 0.75rem 1rem;
+        min-width: 150px;
+    }
+    
+    .filter-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .filter-btn {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        padding: 0.75rem 1rem;
+        border-radius: var(--border-radius-sm);
+        transition: var(--transition);
+        cursor: pointer;
+    }
+    
+    .filter-btn:hover {
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+    
+    .filter-btn.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+    
+    .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .image-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        transition: var(--transition);
+        position: relative;
+    }
+    
+    .image-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px var(--shadow-hover);
+    }
+    
+    .image-preview {
+        position: relative;
+        height: 200px;
+        overflow: hidden;
+    }
+    
+    .image-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: var(--transition);
+    }
+    
+    .image-card:hover .image-preview img {
+        transform: scale(1.05);
+    }
+    
+    .image-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(0,0,0,0.7) 0%, transparent 50%);
+        opacity: 0;
+        transition: var(--transition);
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-end;
+        padding: 1rem;
+    }
+    
+    .image-card:hover .image-overlay {
+        opacity: 1;
+    }
+    
+    .image-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .action-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        border: none;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+        cursor: pointer;
+    }
+    
+    .action-btn:hover {
+        background: white;
+        transform: scale(1.1);
+    }
+    
+    .image-info {
+        padding: 1.5rem;
+    }
+    
+    .image-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .image-project {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+    }
+    
+    .image-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .image-dimensions {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+    }
+    
+    .calibration-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .calibration-badge.calibrated {
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        color: white;
+    }
+    
+    .calibration-badge.not-calibrated {
+        background: var(--bg-tertiary);
+        color: var(--text-muted);
+    }
+    
+    .image-stats {
+        display: flex;
+        justify-content: space-between;
+        color: var(--text-muted);
+        font-size: 0.875rem;
+    }
+    
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-muted);
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state h3 {
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state p {
+        margin-bottom: 2rem;
+    }
+    
+    .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+    
+    .page-link {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        padding: 0.75rem 1rem;
+        margin: 0 0.25rem;
+        border-radius: var(--border-radius-sm);
+        text-decoration: none;
+        transition: var(--transition);
+    }
+    
+    .page-link:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    .page-link.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    @media (max-width: 768px) {
+        .filter-row {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .filter-buttons {
+            justify-content: center;
+        }
+        
+        .gallery-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .gallery-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+.image-actions i {
+    color: #0F0F23;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="gallery-container">
+    <!-- Gallery Header -->
+    <div class="gallery-header">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="text-white mb-2">
+                    <i class="fas fa-images me-2"></i>
+                    Galería de Imágenes
+                </h1>
+                <p class="text-muted">Todas tus imágenes organizadas en un solo lugar</p>
+            </div>
+        </div>
+        
+        <!-- Statistics -->
+        <div class="gallery-stats">
+            <div class="stat-card">
+                <div class="stat-number">{{ total_images }}</div>
+                <div class="stat-label">Total Imágenes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ calibrated_count }}</div>
+                <div class="stat-label">Calibradas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ projects.count }}</div>
+                <div class="stat-label">Proyectos</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="filters-section">
+        <form method="get" id="filterForm">
+            <div class="filter-row">
+                <div>
+                    <label for="search" class="form-label">Buscar imágenes</label>
+                    <input type="text" 
+                           class="search-input" 
+                           id="search" 
+                           name="search" 
+                           placeholder="Nombre de la imagen..."
+                           value="{{ request.GET.search }}">
+                </div>
+                
+                <div>
+                    <label for="project" class="form-label">Proyecto</label>
+                    <select class="filter-select" id="project" name="project">
+                        <option value="">Todos los proyectos</option>
+                        {% for project in projects %}
+                        <option value="{{ project.pk }}" 
+                                {% if request.GET.project == project.pk|stringformat:"s" %}selected{% endif %}>
+                            {{ project.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="filter-buttons">
+                    <button type="button" 
+                            class="filter-btn {% if request.GET.calibrated == 'true' %}active{% endif %}"
+                            data-filter="calibrated" 
+                            data-value="true">
+                        <i class="fas fa-check-circle me-1"></i>
+                        Calibradas
+                    </button>
+                    <button type="button" 
+                            class="filter-btn {% if request.GET.calibrated == 'false' %}active{% endif %}"
+                            data-filter="calibrated" 
+                            data-value="false">
+                        <i class="fas fa-times-circle me-1"></i>
+                        Sin Calibrar
+                    </button>
+                    <button type="button" 
+                            class="filter-btn"
+                            onclick="clearFilters()">
+                        <i class="fas fa-times me-1"></i>
+                        Limpiar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Gallery Grid -->
+    {% if images %}
+        <div class="gallery-grid">
+            {% for image in images %}
+            <div class="image-card">
+                <div class="image-preview">
+                    {% if image.image %}
+                        <img src="{{ image.image.url }}" alt="{{ image.name }}" loading="lazy">
+                    {% else %}
+                        <div class="d-flex align-items-center justify-content-center h-100 bg-light">
+                            <i class="fas fa-image fa-3x text-muted"></i>
+                        </div>
+                    {% endif %}
+
+                    <div class="image-overlay">
+                        <div class="image-actions">
+                            <a href="{% url 'core:image_detail' image.pk %}" 
+                               class="action-btn" 
+                               title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{% url 'core:project_detail' image.project.pk %}" 
+                               class="action-btn" 
+                               title="Ver proyecto">
+                                <i class="fas fa-folder"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="image-info">
+                    <div class="image-name">{{ image.name }}</div>
+                    <div class="image-project">
+                        <i class="fas fa-folder me-1"></i>
+                        {{ image.project.name }}
+                    </div>
+                    
+                    <div class="image-meta">
+                        <div class="image-dimensions">
+                            {{ image.width }} × {{ image.height }} px
+                        </div>
+                        <div class="calibration-badge {% if image.is_calibrated %}calibrated{% else %}not-calibrated{% endif %}">
+                            {% if image.is_calibrated %}
+                                <i class="fas fa-check me-1"></i>
+                                Calibrada
+                            {% else %}
+                                <i class="fas fa-times me-1"></i>
+                                Sin Calibrar
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="image-stats">
+                        <div class="stat-item">
+                            <i class="fas fa-ruler me-1"></i>
+                            {{ image.logical_measurements_count }} mediciones
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-shapes me-1"></i>
+                            {{ image.shapes.count }} formas
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.project %}&project={{ request.GET.project }}{% endif %}{% if request.GET.calibrated %}&calibrated={{ request.GET.calibrated }}{% endif %}" 
+                   class="page-link">
+                    <i class="fas fa-angle-double-left"></i>
+                </a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.project %}&project={{ request.GET.project }}{% endif %}{% if request.GET.calibrated %}&calibrated={{ request.GET.calibrated }}{% endif %}" 
+                   class="page-link">
+                    <i class="fas fa-angle-left"></i>
+                </a>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <span class="page-link active">{{ num }}</span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.project %}&project={{ request.GET.project }}{% endif %}{% if request.GET.calibrated %}&calibrated={{ request.GET.calibrated }}{% endif %}" 
+                       class="page-link">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.project %}&project={{ request.GET.project }}{% endif %}{% if request.GET.calibrated %}&calibrated={{ request.GET.calibrated }}{% endif %}" 
+                   class="page-link">
+                    <i class="fas fa-angle-right"></i>
+                </a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.project %}&project={{ request.GET.project }}{% endif %}{% if request.GET.calibrated %}&calibrated={{ request.GET.calibrated }}{% endif %}" 
+                   class="page-link">
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-images"></i>
+            <h3>No hay imágenes en la galería</h3>
+            <p>Sube algunas imágenes a tus proyectos para verlas aquí</p>
+            <a href="{% url 'core:project_list' %}" class="btn btn-primary">
+                <i class="fas fa-folder-open me-2"></i>
+                Ver Mis Proyectos
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Filter buttons functionality
+    const filterButtons = document.querySelectorAll('.filter-btn[data-filter]');
+    const form = document.getElementById('filterForm');
+    
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const filter = this.dataset.filter;
+            const value = this.dataset.value;
+            
+            // Remove active class from all buttons of the same filter type
+            document.querySelectorAll(`[data-filter="${filter}"]`).forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            // Create hidden input for the filter
+            let existingInput = document.querySelector(`input[name="${filter}"]`);
+            if (existingInput) {
+                existingInput.value = value;
+            } else {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = filter;
+                input.value = value;
+                form.appendChild(input);
+            }
+            
+            // Submit form
+            form.submit();
+        });
+    });
+    
+    // Search input with debounce
+    const searchInput = document.getElementById('search');
+    let searchTimeout;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            form.submit();
+        }, 500);
+    });
+    
+    // Project select change
+    const projectSelect = document.getElementById('project');
+    projectSelect.addEventListener('change', function() {
+        form.submit();
+    });
+    
+    // Clear filters function
+    window.clearFilters = function() {
+        // Remove all filter inputs
+        document.querySelectorAll('input[name="calibrated"]').forEach(input => input.remove());
+        
+        // Clear search and project select
+        searchInput.value = '';
+        projectSelect.value = '';
+        
+        // Remove active classes
+        filterButtons.forEach(btn => btn.classList.remove('active'));
+        
+        // Submit form
+        form.submit();
+    };
+    
+    // Add animation to image cards
+    const imageCards = document.querySelectorAll('.image-card');
+    imageCards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+        card.classList.add('fade-in-up');
+    });
+});
+</script>
+{% endblock %}
