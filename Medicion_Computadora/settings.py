@@ -46,6 +46,7 @@ INSTALLED_APPS = [
   'crispy_forms',
   'crispy_bootstrap5',
   'core.apps.CoreConfig',
+  'storages',
 ]
 
 if DEBUG:
@@ -225,4 +226,30 @@ REST_FRAMEWORK = {
   'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
   'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
   'PAGE_SIZE': _int_env('API_PAGE_SIZE', 20),
+}
+
+# --------------------------
+# AWS S3 CONFIGURATION (sin variables de entorno)
+# --------------------------
+
+# 🔑 Credenciales de acceso
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+
+# 🪣 Nombre del bucket y región
+AWS_STORAGE_BUCKET_NAME = "aws3-medina"
+AWS_S3_REGION_NAME = "us-east-1"
+
+# 🌐 Dominio del bucket
+AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+
+# 📦 Carpeta base para archivos estáticos dentro del bucket
+AWS_LOCATION = "static"
+
+# ❌ Desactivar ACLs (requerido si el bucket no las usa)
+AWS_DEFAULT_ACL = None
+
+# ⚙️ Parámetros por objeto S3 (por ejemplo, control de caché)
+AWS_S3_OBJECT_PARAMETERS = {
+    "CacheControl": "max-age=86400",
 }

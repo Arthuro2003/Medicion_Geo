@@ -1,7 +1,8 @@
 import json
 import logging
 import os
-
+import boto3
+from django.conf import settings
 import cv2
 import numpy as np
 from django.conf import settings
@@ -607,21 +608,62 @@ class ProcessImageDetectionView(LoginRequiredMixin, View):
     created_shapes_summary = []
     created_measurements_summary = []
 
+    # 1. Limpiar detecciones anteriores (código original)
     try:
       image.shapes.filter(is_auto_detected=True).delete()
       logger.info(f"Limpieza de detecciones anteriores para la imagen {image.pk} completada.")
     except Exception as e:
       logger.exception(f'Error al limpiar detecciones para la imagen {image.pk}: {e}')
 
+    # 2. Procesar la imagen usando la ruta local del sistema de archivos (código original)
     try:
       detection = detect_and_annotate(image.image.path, aruco_real_size_cm=5.0)
     except Exception as e:
       logger.exception(f"Error en 'detect_and_annotate' para la imagen {image.pk}: {e}")
       return JsonResponse({'status': 'error', 'message': f"Error al procesar la imagen: {e}"}, status=500)
 
+    # --- INICIO DEL BLOQUE PARA SUBIR A S3 MANTENIENDO EL LOCAL ---
+    annotated_path = detection.get('annotated_path')
+    annotated_url = detection.get('annotated_url')
+
+    if annotated_path and os.path.exists(annotated_path):
+        logger.info(f"Imagen procesada guardada localmente en: {annotated_path}")
+        try:
+            # Crear un cliente de S3
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=settings.AWS_S3_REGION_NAME
+            )
+
+            # Definir la ruta dentro del bucket de S3
+            file_name = os.path.basename(annotated_path)
+            s3_key = f"media/processed/{file_name}"
+
+            # Subir el archivo
+            s3_client.upload_file(
+                annotated_path,
+                settings.AWS_STORAGE_BUCKET_NAME,
+                s3_key,
+                ExtraArgs={'ContentType': 'image/jpeg'}
+            )
+            
+            # Construir la URL pública de S3 y sobreescribir la URL local
+            annotated_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{s3_key}"
+            detection['annotated_url'] = annotated_url
+            
+            logger.info(f"Éxito: Imagen procesada también subida a S3 en: {annotated_url}")
+
+        except Exception as upload_error:
+            logger.error(f"FALLO al subir la imagen procesada a S3: {upload_error}. Se usará la URL local.")
+            # Si falla la subida, no es crítico. La URL seguirá siendo la local.
+    # --- FIN DEL BLOQUE PARA SUBIR A S3 ---
+
     results = detection.get('results', [])
     pixels_per_cm = detection.get('pixels_per_cm')
 
+    # 3. Guardar datos de calibración con la URL final (S3 o local)
     if pixels_per_cm:
       try:
         image.is_calibrated = True
@@ -632,7 +674,8 @@ class ProcessImageDetectionView(LoginRequiredMixin, View):
         image.save()
       except Exception as e:
         logger.exception('Falló al guardar datos de calibración para la imagen %s: %s', image.pk, e)
-
+    
+    # 4. Crear formas geométricas y mediciones (código original)
     for obj in results:
       try:
         idx = obj.get('index')
@@ -670,6 +713,7 @@ class ProcessImageDetectionView(LoginRequiredMixin, View):
         logger.exception(f"Falló al guardar el objeto detectado {obj.get('index', 'N/A')}: {e}")
         continue
 
+    # 5. Envío de notificación por correo (código original)
     email_sent = False
     try:
       preferences = UserPreferences.get_or_create_for_user(request.user)
@@ -713,6 +757,7 @@ class ProcessImageDetectionView(LoginRequiredMixin, View):
       logger.exception(
         f"Falló el envío de la notificación por email para el usuario {request.user.username}: {email_error}")
 
+    # 6. Respuesta final (código original)
     return JsonResponse({
       'status': 'success',
       'message': f'Detección completada. {len(results)} objetos encontrados.',

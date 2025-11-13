@@ -7,3 +7,7 @@ migrations/
 __pycache__/
 *.pyc
 tools/
+.env
+.venv/
+venv/
+__pycache__/
