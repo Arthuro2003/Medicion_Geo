@@ -307,6 +307,4 @@ Incluye un archivo `LICENSE` en la raíz del repositorio si aún no existe.
 * Detector configurable (tamaño ArUco desde UI, logs de inferencia).
 * Exportaciones incrementales y paginadas para grandes volúmenes.
 
----
 
-**Hecho con ❤️ para mediciones precisas en contextos reales (aula, laboratorio y campo).**
